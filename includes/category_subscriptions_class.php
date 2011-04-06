@@ -45,36 +45,47 @@ class CategorySubscriptions {
 
       add_option("category_subscription_version", $this->category_subscription_version);
   } 
-    function cat_subscribe_update_profile_fields ( $user ){
-        // TODO - save options.
 
+    function cat_subscribe_update_profile_fields ( $user_ID ){
         $cats_to_save = $_POST['category_subscription_categories'];
-		    $this->wpdb->query( $this->wpdb->prepare( "DELETE FROM {$this->user_subscriptions_table_name} WHERE user_ID = %s", $user->ID ) );
-    
+        $this->wpdb->query( $this->wpdb->prepare( "DELETE FROM $this->user_subscriptions_table_name WHERE user_ID = %d", array($user_ID) ) );
+        foreach ($cats_to_save as $cat){
+            $this->wpdb->insert($this->user_subscriptions_table_name, array('category_ID' => $cat, 'user_ID' => $user_ID), array('%d','%d') );
+        }
     }
-    function cat_subscribe_show_profile_fields( $user ) { ?>
-  <h3><?php _e('Email Updates') ?></h3>
+
+  function cat_subscribe_show_profile_fields( $user ) {
+
+      // i18n apparently can't be embedded directly into a heredoc. This makes me sad. :(
+      $header = __('Email Updates');
+      $label = __('Please select the types of updates you\'d like to receive');
+      $description = __('Please select the categories you\'d like to get updates from.');
+
+  echo <<<FIELDS
+    <h3>$header</h3>
     <table class="form-table">
       <tr>
-      <th><label for="category_subscription_categories"><?php _e("Please select the types of updates you'd like to receive") ?></label></th>
+      <th><label for="category_subscription_categories">$label</label></th>
         <td>
-        <?php echo $this->cat_subscribe_category_list() ?><br />
-        <span class="description"><?php _e("Please select the categories you'd like to get updates from.") ?></span>
+            {$this->cat_subscribe_category_list($user)} <br/>
+        <span class="description">$description</span>
         </td>
       </tr>
-  </table>
-    <?php } 
+    </table>
+FIELDS;
+ } 
 
-    function cat_subscribe_category_list() {
+  function cat_subscribe_category_list($user) {
+
         $categories = get_categories('hide_empty=0&orderby=name');
+        $sql = $this->wpdb->prepare("SELECT category_ID from $this->user_subscriptions_table_name where user_ID = %d", array($user->ID));
+        $subscriptions = $this->wpdb->get_results($sql, OBJECT_K);
         $output = '';
         foreach ($categories as $cat){
-            $output .= '<input type="checkbox" name="category_subscription_categories[]" id="category_subscription_category_' . $cat->cat_ID . '">';
-            $output .= '<label for="category_subscription_category_' . $cat->cat_ID . '">' . htmlspecialchars($cat->cat_name) .'</label>';
+            $output .= '<input type="checkbox" name="category_subscription_categories[]" value="' . esc_attr($cat->cat_ID) . '" id="category_subscription_category_' . $cat->cat_ID . '" ' . ((isset($subscriptions[$cat->cat_ID])) ? 'checked="checked"' : '') . '>';
+            $output .= ' <label for="category_subscription_category_' . $cat->cat_ID . '">' . htmlspecialchars($cat->cat_name) .'</label><br/>';
         }
         return $output;
     }
 
 } // CategorySubscriptions class
-
- ?>

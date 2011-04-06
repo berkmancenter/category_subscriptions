@@ -2,6 +2,7 @@ module Wordpress
   class LogInError < StandardError; end
   class ContentError < StandardError; end
   class CheckboxNotChecked < StandardError; end
+  class CheckboxChecked < StandardError; end
 end
 
 require 'rubygems'

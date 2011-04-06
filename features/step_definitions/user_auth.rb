@@ -11,7 +11,7 @@ Given 'a logged in user of type "$user_type"' do |user_type|
     fill_in('Username', :with => "admin")
     fill_in('Password', :with => "admin")
     click_button('Log In')
-    raise Wordpress::LogInError unless page.has_content?('Personal Options')
+    raise Wordpress::LogInError unless page.has_content?('Howdy, admin')
   end
 end
 
@@ -37,4 +37,31 @@ end
 
 Then 'the checkbox "$field" should be checked' do |field|
   raise Wordpress::CheckboxNotChecked unless find_field(field)['checked']
+end
+
+Then 'the checkbox "$field" should not be checked' do |field|
+  raise Wordpress::CheckboxChecked if find_field(field)['checked']
+end
+
+When 'I click "$link" within the row with the id "$id"' do |link,id|
+  find('#' + id).click_link(link)
+end
+
+Given 'a "$plugin_state" plugin in the row with the id "$id"' do |plugin_state,id|
+  # This goes too fast for some browsers.
+  set_speed(:medium)
+  visit('/wp-login.php')
+  fill_in('Username', :with => "admin")
+  fill_in('Password', :with => "admin")
+  click_button('Log In')
+  visit('/wp-admin/plugins.php')
+  selector = '#' + id + ' span.' + ((plugin_state == 'Activated') ? 'deactivate' : 'activate') 
+  if has_no_selector?(selector)
+    if plugin_state == 'Activated'
+      find('#' + id).click_link('Activate')
+    else
+      find('#' + id).click_link('Deactivate')
+    end
+  end
+  click_link('Log Out')
 end
