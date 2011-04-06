@@ -5,41 +5,31 @@
  * @version 0.1
 */
 /*
-        Plugin Name: Category Subscriptions
-        Plugin URI: http://www.collispuro.com
-        Description: This plugin allows your registered users to subscribe to categories and receive updates.
-        Author: Dan Collis-Puro
-        Version: 0.1
-        Author URI: http://collispuro.com
+Plugin Name: Category Subscriptions
+Plugin URI: http://www.collispuro.com
+Description: This plugin allows your registered users to subscribe to categories and receive updates.
+Author: Dan Collis-Puro
+Version: 0.1
+Author URI: http://collispuro.com
 */
+
+global $wpdb;
 
 require_once('includes/category_subscriptions_class.php');
 
-$cat_sub = new CategorySubscriptions;
-$cat_sub->category_subscription_version = '0.1';
+$cat_sub = new CategorySubscriptions($wpdb);
 
-require_once('includes/user_functions.php');
+// Hooks and actions
 
-function category_subscriptions_install(){
-  global $wpdb;
-  global $cat_sub;
-  $sql = "CREATE TABLE " . $cat_sub->user_subscriptions_table_name . ' (
-    id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-    category_ID bigint(20) unsigned,
-    user_ID bigint(20) unsigned,
-    UNIQUE KEY id (id)
-  )';
+register_activation_hook(__FILE__,array($cat_sub,'category_subscriptions_install'));
 
-  require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-  dbDelta($sql);
+// In user_functions.php
+// show options on profile page
+add_action( 'edit_user_profile', array($cat_sub, 'cat_subscribe_show_profile_fields') );
+add_action( 'profile_personal_options', array($cat_sub, 'cat_subscribe_show_profile_fields') );
 
-  add_option("category_subscription_version", $cat_sub->category_subscription_version);
-} 
+// save options from profile page
+add_action( 'personal_options_update', array($cat_sub, 'cat_subscribe_update_profile_fields') );
+add_action( 'edit_user_profile_update', array($cat_sub, 'cat_subscribe_update_profile_fields') );
 
-# Hooks and actions
-
-register_activation_hook(__FILE__,'category_subscriptions_install');
-
-# In user_functions.php
-add_action( 'edit_user_profile', 'cat_subscribe_show_profile_fields' );
-add_action( 'profile_personal_options', 'cat_subscribe_show_profile_fields' );
+?>
