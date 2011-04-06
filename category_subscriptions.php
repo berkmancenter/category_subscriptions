@@ -32,4 +32,7 @@ add_action( 'profile_personal_options', array($cat_sub, 'cat_subscribe_show_prof
 add_action( 'personal_options_update', array($cat_sub, 'cat_subscribe_update_profile_fields') );
 add_action( 'edit_user_profile_update', array($cat_sub, 'cat_subscribe_update_profile_fields') );
 
+// Admin functions
+add_action( 'admin_menu', array($cat_sub, 'cat_subscribe_admin_menu') );
+
 ?>

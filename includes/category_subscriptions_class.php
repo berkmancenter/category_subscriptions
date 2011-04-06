@@ -86,6 +86,11 @@ FIELDS;
             $output .= ' <label for="category_subscription_category_' . $cat->cat_ID . '">' . htmlspecialchars($cat->cat_name) .'</label><br/>';
         }
         return $output;
-    }
+  }
+
+  function cat_subscribe_admin_menu (){
+      // TODO - build out the config page.
+      add_submenu_page('plugins.php', __('Category Subscriptions Configuration'), __('Category Subscriptions Configuration'), 'manage_options', 'category-subscriptions-config', 'cat_subscribe_config');
+  }
 
 } // CategorySubscriptions class
