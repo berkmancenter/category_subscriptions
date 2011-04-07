@@ -14,11 +14,11 @@ Scenario: Deactive the plugin without errors.
     And I click "Deactivate" within the row with the id "category-subscriptions"
     Then I should see "Plugin deactivated"
 
-@wip
 Scenario: Manage options for the plugin
     Given a "Activated" plugin in the row with the id "category-subscriptions"
     And a logged in user of type "administrator"
-    When I visit '/wp-admin/plugins.php?page=category-subscriptions-config'
+    When I visit "/wp-admin/options-general.php?page=category-subscriptions-config"
     Then I should see "Configure Category Subscriptions"
     And I should see "Maximum outgoing email batch size"
-    And I should see "Subject line"
+    And I should see "Individual Emails"
+

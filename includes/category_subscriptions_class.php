@@ -1,5 +1,4 @@
 <?php
-require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
 class CategorySubscriptions {
     var $user_subscriptions_table_name = '';
     var $category_subscription_version = '';
@@ -9,17 +8,17 @@ class CategorySubscriptions {
     var $max_batch = 50;
     var $use_wp_cron = 'yes';
 
-    var $daily_email_subject = '';
+    var $daily_email_subject = 'Daily Digest for [DAY], [CATEGORY] - [SITETITLE]';
     var $daily_email_html_template = '';
     var $daily_email_text_template = '';
     var $daily_email_type = '';
 
-    var $weekly_email_subject = '';
+    var $weekly_email_subject = 'Weekly Digest for [WEEK], [CATEGORY] - [SITETITLE]';
     var $weekly_email_html_template = '';
     var $weekly_email_text_template = '';
     var $weekly_email_type = '';
 
-    var $individual_email_subject = '';
+    var $individual_email_subject = '[SUBJECT], [CATEGORY] - [SITETITLE]';
     var $individual_email_html_template = '';
     var $individual_email_text_template = '';
     var $individual_email_type = '';
@@ -53,6 +52,7 @@ class CategorySubscriptions {
     public function __construct(&$wpdb){
 
         wp_register_style('admin.css',plugins_url('/stylesheets/admin.css',dirname(__FILE__)));
+        wp_register_script('jquery.cookie.js',plugins_url('/javascripts/jquery.cookie.js',dirname(__FILE__)));
         wp_register_script('admin.js',plugins_url('/javascripts/admin.js',dirname(__FILE__)));
 
         $this->wpdb = $wpdb;
@@ -72,12 +72,19 @@ class CategorySubscriptions {
     }
 
     function category_subscriptions_install(){
+
+        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+
         $sql = "CREATE TABLE " . $this->user_subscriptions_table_name . ' (
             id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
             category_ID bigint(20) UNSIGNED,
+            delivery_time_preference ENUM("individual","daily","weekly") not null default "individual",
+            delivery_format_preference ENUM("html","text") not null default "text",
             user_ID bigint(20) UNSIGNED,
             UNIQUE KEY id (id),
           KEY category_ID (category_ID),
+          KEY delivery_time_preference (delivery_time_preference),
+          KEY delivery_format_preference (delivery_format_preference),
           KEY user_ID (user_ID)
       ) DEFAULT CHARSET=utf8';
 
@@ -109,6 +116,7 @@ class CategorySubscriptions {
 
     function show_profile_fields( $user ) {
         wp_enqueue_style('admin.css');
+        wp_enqueue_script('jquery.cookie.js');
         wp_enqueue_script('admin.js');
 ?>
     <h3><?php _e('Email Updates'); ?></h3>
@@ -123,8 +131,10 @@ class CategorySubscriptions {
     </table>
 <?php } 
 
-function create_email_template_form_elements($type){ ?>
-    <h4 class="cat_sub_toggler" id="<?php echo $type;?>_toggler"><?php _e($type .' Emails'); ?><span><?php _e('expand. . . '); ?></span></h4>
+function create_email_template_form_elements($type){ 
+    // dynamically creating i18n is probably not going to work. . . 
+?>
+    <h4 class="cat_sub_toggler" id="<?php echo $type;?>_toggler"><?php _e(ucfirst($type) .' Emails'); ?><span><?php _e('expand. . .'); ?></span></h4>
     <table class="form-table toggler_target" id="<?php echo $type;?>_target">
     <tr>
     <th><label for="cat_sub_<?php echo $type;?>_email_subject"><?php _e('Subject line template for ' . $type .' emails'); ?></label></th>
@@ -173,24 +183,29 @@ function default_email_type_list($email_type) {
 
     function admin_menu (){
         wp_enqueue_style('admin.css');
+        wp_enqueue_script('jquery.cookie.js');
         wp_enqueue_script('admin.js');
         add_submenu_page('options-general.php', __('Category Subscriptions Configuration'), __('Category Subscriptions'), 'manage_options', 'category-subscriptions-config', array($this,'config'));
     }
 
     function config(){
+        $updated = false;
         if ( isset($_POST['submit']) ) {
             if ( function_exists('current_user_can') && !current_user_can('manage_options') ){
                 die(__('how about no?'));
             };
             // Save options
 
+            $updated = true;
             foreach($this->editable_options as $opt){
-                // TODO - dynamically assign variables.
                 $this->{$opt} = $_POST['cat_sub_' . $opt];
                 update_option('cat_sub_'. $opt, $this->{$opt});
             }
         }
         // emit form
+        if($updated){ 
+            echo "<div id='message' class='updated'><p><strong>" . __('Saved options.') ."</strong></p></div>";
+        }
 ?>
 <div class="wrap">
   <form action="" method="post">
@@ -216,11 +231,29 @@ function default_email_type_list($email_type) {
     </table>
 
     <h3><?php _e('Email Templates'); ?></h3>
-    <p><?php _e('All email templates - daily, weekly, individual - share the same tags. So, for example, you can put [FIRST_NAME] in the subject line or body of any email template and it\'ll work the same.'); ?></p>
+    <ul>
+        <li><?php _e('All email templates - daily, weekly, individual - share the same tags. So, for example, you can put [FIRST_NAME] in the subject line or body of any email template and it\'ll work the same.'); ?></li>
+        <li><?php _e('An "email row template" defines the template used in digest emails to display the list of messages. Each individual message has this template applied to it, and is then put in the [EMAILLIST] template tag for your daily or weekly digest.'); ?></li>
+        <li><?php _e('You should be sure both the HTML and plain text templates are kept up to date. They will both be used when you create HTML messages so that the maximum number of users can read your content.') ?></li>
+    </ul>
 
     <?php $this->create_email_template_form_elements('individual') ?>
     <?php $this->create_email_template_form_elements('daily') ?>
     <?php $this->create_email_template_form_elements('weekly') ?>
+
+    <h4 class="cat_sub_toggler" id="email_row_toggler"><?php _e('Email Rows'); ?><span><?php _e('expand. . .'); ?></span></h4>
+    <table class="form-table toggler_target" id="email_target">
+        <tr>
+            <th><label for="cat_sub_email_row_html_template"><?php _e('HTML email row template'); ?></label>
+            </th>
+            <td><textarea rows="10" cols="70" name="cat_sub_email_row_html_template"><?php echo esc_textarea($this->email_row_html_template); ?></textarea></td>
+        </tr>
+        <tr>
+            <th><label for="cat_sub_email_row_text_template"><?php _e('Text email row template'); ?></label>
+            </th>
+            <td><textarea rows="10" cols="70" name="cat_sub_email_row_text_template"><?php echo esc_textarea($this->email_row_text_template); ?></textarea></td>
+        </tr>
+    </table>
 
   <p class="submit"><input type="submit" name="submit" id="submit" class="button-primary" value="<?php _e('Update Options'); ?>"  /></p> 
   </form>
