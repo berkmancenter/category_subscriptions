@@ -1,6 +1,5 @@
 Feature: Allow admins to activate the plugin, manage options and various other items.
 
-@wip
 Scenario: Activate the plugin without errors.
     Given a "Deactivated" plugin in the row with the id "category-subscriptions"
     And a logged in user of type "administrator"
@@ -21,3 +20,5 @@ Scenario: Manage options for the plugin
     And a logged in user of type "administrator"
     When I visit '/wp-admin/plugins.php?page=category-subscriptions-config'
     Then I should see "Configure Category Subscriptions"
+    And I should see "Maximum outgoing email batch size"
+    And I should see "Subject line"
