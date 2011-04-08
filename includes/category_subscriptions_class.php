@@ -1,7 +1,7 @@
 <?php
 class CategorySubscriptions {
     var $user_subscriptions_table_name = '';
-    var $category_subscription_version = '';
+    var $category_subscription_version = '0.1';
     var $message_queue_table_name = '';
     var $wpdb = '';
 
@@ -58,7 +58,17 @@ class CategorySubscriptions {
         $this->wpdb = $wpdb;
         $this->user_subscriptions_table_name = $this->wpdb->prefix .'cat_sub_categories_users';
         $this->message_queue_table_name = $this->wpdb->prefix . 'cat_sub_messages';
-        $this->category_subscription_version = '0.1';
+
+        error_log("Version from obj: " . $this->category_subscription_version);
+        error_log('version from obptions: ' .get_option('category_subscription_version'));
+
+        if(get_option('category_subscription_version') != $this->category_subscription_version){
+            // Re-init the plugin to apply database changes. Hizz-ott.
+            // TODO - can't run class method from within constructor?
+
+            $this->category_subscriptions_install;
+        }
+
         foreach($this->editable_options as $opt){
             if(get_option('cat_sub_' . $opt)){
                 $this->{$opt} = get_option('cat_sub_' . $opt);
@@ -67,11 +77,12 @@ class CategorySubscriptions {
     }
 
     # PHP 4 constructor
-    function CategorySubscriptions() {
+    public function CategorySubscriptions() {
         return $this->__construct();
     }
 
-    function category_subscriptions_install(){
+    public function category_subscriptions_install(){
+        error_log('installing');
 
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
 
@@ -93,20 +104,26 @@ class CategorySubscriptions {
         $sql = "CREATE TABLE " . $this->message_queue_table_name . " (
             id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
             user_ID bigint(20) UNSIGNED,
+            post_ID bigint(20) UNSIGNED,
             subject varchar(250),
-          message varchar(10000),
-          to_send boolean DEFAULT TRUE,
-          deliver_at datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
-          UNIQUE KEY id (id),
-          KEY user_ID (user_ID)
-      ) DEFAULT CHARSET=utf8";
+            message varchar(10000),
+            to_send boolean DEFAULT TRUE,
+            deliver_at datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
 
+            UNIQUE KEY id (id),
+            KEY user_ID (user_ID),
+            KEY post_ID (post_ID),
+            KEY to_send (to_send),
+            KEY deliver_at (deliver_at)
+        ) DEFAULT CHARSET=utf8";
+    
+        error_log('init table');
         dbDelta($sql);
 
-        add_option("category_subscription_version", $this->category_subscription_version);
+        update_option("category_subscription_version", $this->category_subscription_version);
     } 
 
-    function update_profile_fields ( $user_ID ){
+    public function update_profile_fields ( $user_ID ){
         $cats_to_save = $_POST['category_subscription_categories'];
         $this->wpdb->query( $this->wpdb->prepare( "DELETE FROM $this->user_subscriptions_table_name WHERE user_ID = %d", array($user_ID) ) );
         foreach ($cats_to_save as $cat){
@@ -114,7 +131,16 @@ class CategorySubscriptions {
         }
     }
 
-    function show_profile_fields( $user ) {
+
+    public function instantiate_messages($post_ID){
+
+    }
+
+    public function trash_messages($post_ID){
+
+    }
+
+    public function show_profile_fields( $user ) {
       wp_enqueue_style('admin.css');
       wp_enqueue_script('jquery.cookie.js');
       wp_enqueue_script('admin.js');
@@ -123,7 +149,7 @@ class CategorySubscriptions {
       echo $this->category_list($user);
     } 
 
-function create_email_template_form_elements($type){ 
+    private function create_email_template_form_elements($type){ 
     // dynamically creating i18n is probably not going to work. . . 
 ?>
     <h4 class="cat_sub_toggler" id="<?php echo $type;?>_toggler"><?php _e(ucfirst($type) .' Emails'); ?><span><?php _e('expand. . .'); ?></span></h4>
@@ -147,7 +173,7 @@ function create_email_template_form_elements($type){
 <?php 
 }
 
-function default_email_type_list($email_type) {
+    private function default_email_type_list($email_type) {
     ?>
         <tr>
             <th><label for="cat_sub_<?php echo $email_type; ?>_email_type"><?php _e('Send out this type of email by default for ' . $email_type .' emails.'); ?></label></th>
@@ -160,7 +186,7 @@ function default_email_type_list($email_type) {
         </tr>
 <?php }
 
-function category_list($user) {
+    private function category_list($user) {
     //TODO
     $categories = get_categories('hide_empty=0&orderby=name');
     $sql = $this->wpdb->prepare("SELECT category_ID, delivery_time_preference, delivery_format_preference from $this->user_subscriptions_table_name where user_ID = %d", array($user->ID));
@@ -199,14 +225,14 @@ function category_list($user) {
     echo '</tbody></table>';
 }
 
-    function admin_menu (){
+    public function admin_menu (){
         wp_enqueue_style('admin.css');
         wp_enqueue_script('jquery.cookie.js');
         wp_enqueue_script('admin.js');
         add_submenu_page('options-general.php', __('Category Subscriptions Configuration'), __('Category Subscriptions'), 'manage_options', 'category-subscriptions-config', array($this,'config'));
     }
 
-    function config(){
+    public function config(){
         $updated = false;
         if ( isset($_POST['submit']) ) {
             if ( function_exists('current_user_can') && !current_user_can('manage_options') ){

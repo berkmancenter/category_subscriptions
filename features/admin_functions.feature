@@ -42,8 +42,11 @@ Scenario: Create a post and see that it's scheduled in the backend.
     And I fill in "title" with "A new post"
     And I fill in "content" with "Some new content"
     And I wait "3" seconds
+    And I ensure the "Categories" post edit page panel is visible
+    And I click "#category-tabs li:first-child a"
     And I check "Test Category 1"
     And I check "Test Category 2"
     And I press "Publish"
     Then I should see "Post published"
+    
 

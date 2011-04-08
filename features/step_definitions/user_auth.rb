@@ -65,6 +65,15 @@ When 'I fill in "$field" with "$value"' do |field, value|
   fill_in(field, :with => value)
 end
 
+When /^I ensure the "([^"]*)" post edit page panel is visible$/ do |panel_type|
+  case panel_type
+  when 'Categories'
+    if ! find('#category-tabs').visible?
+      click('#categorydiv .hndle')
+    end
+  end
+end
+
 Given 'a "$plugin_state" plugin in the row with the id "$id"' do |plugin_state,id|
   # This goes too fast for some browsers.
   set_speed(:medium)
