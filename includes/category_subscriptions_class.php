@@ -115,21 +115,13 @@ class CategorySubscriptions {
     }
 
     function show_profile_fields( $user ) {
-        wp_enqueue_style('admin.css');
-        wp_enqueue_script('jquery.cookie.js');
-        wp_enqueue_script('admin.js');
-?>
-    <h3><?php _e('Email Updates'); ?></h3>
-    <table class="form-table">
-      <tr>
-      <th><label for="category_subscription_categories"><?php _e('Please select the types of updates you\'d like to receive'); ?></label></th>
-        <td>
-        <?php echo $this->category_list($user) ?> <br/>
-            <span class="description"><?php _e('Please select the categories you\'d like to get updates from.'); ?></span>
-        </td>
-      </tr>
-    </table>
-<?php } 
+      wp_enqueue_style('admin.css');
+      wp_enqueue_script('jquery.cookie.js');
+      wp_enqueue_script('admin.js');
+      echo '<h3>' . __('Email Updates') . '</h3>';
+      echo '<p>' . __('Please select the types of updates you\'d like to receive') . '</p>';
+      echo $this->category_list($user);
+    } 
 
 function create_email_template_form_elements($type){ 
     // dynamically creating i18n is probably not going to work. . . 
@@ -138,16 +130,16 @@ function create_email_template_form_elements($type){
     <table class="form-table toggler_target" id="<?php echo $type;?>_target">
     <tr>
     <th><label for="cat_sub_<?php echo $type;?>_email_subject"><?php _e('Subject line template for ' . $type .' emails'); ?></label></th>
-    <td><input type="text" name="cat_sub_<?php echo $type;?>_email_subject" value="<?php echo esc_attr($this->{$type .'_email_subject'}); ?>" size="70" /><br/>
+    <td><input type="text" id="cat_sub_<?php echo $type;?>_email_subject" name="cat_sub_<?php echo $type;?>_email_subject" value="<?php echo esc_attr($this->{$type .'_email_subject'}); ?>" size="70" /><br/>
     </td>
     </tr>
     <tr>
         <th><label for="cat_sub_<?php echo $type;?>_email_html_template"><?php _e('HTML email template for '. $type . ' emails'); ?></label></th>
-        <td><textarea rows="10" cols="70" name="cat_sub_<?php echo $type;?>_email_html_template"><?php echo esc_textarea($this->{$type . '_email_html_template'}); ?></textarea></td>
+        <td><textarea id="cat_sub_<?php echo $type;?>_email_html_template" rows="10" cols="70" name="cat_sub_<?php echo $type;?>_email_html_template"><?php echo esc_textarea($this->{$type . '_email_html_template'}); ?></textarea></td>
     </tr>
     <tr>
         <th><label for="cat_sub_<?php echo $type;?>_email_text_template"><?php _e('Plain text email template for ' . $type .' emails'); ?></label></th>
-        <td><textarea rows="10" cols="70" name="cat_sub_<?php echo $type; ?>_email_text_template"><?php echo esc_textarea($this->{$type . '_email_text_template'}); ?></textarea></td>
+        <td><textarea id="cat_sub_<?php echo $type;?>_email_text_template" rows="10" cols="70" name="cat_sub_<?php echo $type; ?>_email_text_template"><?php echo esc_textarea($this->{$type . '_email_text_template'}); ?></textarea></td>
     </tr>
         <?php $this->default_email_type_list($type); ?>
     </tr>
@@ -168,18 +160,44 @@ function default_email_type_list($email_type) {
         </tr>
 <?php }
 
-    function category_list($user) {
-
-        $categories = get_categories('hide_empty=0&orderby=name');
-        $sql = $this->wpdb->prepare("SELECT category_ID from $this->user_subscriptions_table_name where user_ID = %d", array($user->ID));
-        $subscriptions = $this->wpdb->get_results($sql, OBJECT_K);
-        $output = '';
-        foreach ($categories as $cat){
-            $output .= '<input type="checkbox" name="category_subscription_categories[]" value="' . esc_attr($cat->cat_ID) . '" id="category_subscription_category_' . $cat->cat_ID . '" ' . ((isset($subscriptions[$cat->cat_ID])) ? 'checked="checked"' : '') . '>';
-            $output .= ' <label for="category_subscription_category_' . $cat->cat_ID . '">' . htmlspecialchars($cat->cat_name) .'</label><br/>';
-        }
-        return $output;
+function category_list($user) {
+    //TODO
+    $categories = get_categories('hide_empty=0&orderby=name');
+    $sql = $this->wpdb->prepare("SELECT category_ID, delivery_time_preference, delivery_format_preference from $this->user_subscriptions_table_name where user_ID = %d", array($user->ID));
+    $subscriptions = $this->wpdb->get_results($sql, OBJECT_K);
+?>
+        <table class="wp-list-table widefat fixed">
+          <thead>
+            <tr>
+            <th><?php _e('Category'); ?></th>
+            <th><?php _e('Frequency'); ?></th>
+            <th><?php _e('Format'); ?></th>
+            </tr>
+          </thead><tbody>
+<?php foreach ($categories as $cat){ ?>
+    <tr>
+        <td>
+            <input type="checkbox" name="category_subscription_categories[]" value="<?php echo esc_attr($cat->cat_ID); ?>" id="category_subscription_category_<?php echo $cat->cat_ID; ?>" <?php echo ((isset($subscriptions[$cat->cat_ID])) ? 'checked="checked"' : '') ?> >
+            <label for="category_subscription_category_<?php echo $cat->cat_ID; ?>"><?php echo htmlspecialchars($cat->cat_name); ?></label>
+        </td>
+        <td>
+            <select name="delivery_time_preference_<?php echo $cat->cat_ID; ?>">
+                <option name="individual"><?php _e('Immediately'); ?></option>
+                <option name="daily"><?php _e('Daily'); ?></option>
+                <option name="weekly"><?php _e('Weekly'); ?></option>
+            </select>
+        </td>
+        <td>
+            <select name="delivery_format_preference_<?php echo $cat->cat_ID; ?>">
+                <option name="text"><?php _e('Plain text'); ?></option>
+                <option name="html"><?php _e('HTML'); ?></option>
+            </select>
+        </td>
+    </tr>
+<?php
     }
+    echo '</tbody></table>';
+}
 
     function admin_menu (){
         wp_enqueue_style('admin.css');

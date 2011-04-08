@@ -47,6 +47,24 @@ When 'I click "$link" within the row with the id "$id"' do |link,id|
   find('#' + id).click_link(link)
 end
 
+When 'I click "$link"' do |link|
+  find(link).click
+end
+
+When 'I wait "$seconds" seconds' do |seconds|
+  sleep(seconds.to_i)
+end
+
+Then 'the "$field" field should contain "$value"' do |field, value|
+  field = find_field(field)
+  field_value = (field.tag_name == 'textarea') ? field.text : field.value
+  raise Wordpress::FieldDoesntContain unless field_value.match(/#{value}/)
+end
+
+When 'I fill in "$field" with "$value"' do |field, value|
+  fill_in(field, :with => value)
+end
+
 Given 'a "$plugin_state" plugin in the row with the id "$id"' do |plugin_state,id|
   # This goes too fast for some browsers.
   set_speed(:medium)
