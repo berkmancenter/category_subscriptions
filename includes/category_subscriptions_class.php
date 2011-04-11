@@ -59,14 +59,11 @@ class CategorySubscriptions {
         $this->user_subscriptions_table_name = $this->wpdb->prefix .'cat_sub_categories_users';
         $this->message_queue_table_name = $this->wpdb->prefix . 'cat_sub_messages';
 
-        error_log("Version from obj: " . $this->category_subscription_version);
-        error_log('version from obptions: ' .get_option('category_subscription_version'));
-
         if(get_option('category_subscription_version') != $this->category_subscription_version){
             // Re-init the plugin to apply database changes. Hizz-ott.
             // TODO - can't run class method from within constructor?
 
-            $this->category_subscriptions_install;
+            $this->category_subscriptions_install();
         }
 
         foreach($this->editable_options as $opt){
@@ -82,8 +79,6 @@ class CategorySubscriptions {
     }
 
     public function category_subscriptions_install(){
-        error_log('installing');
-
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
 
         $sql = "CREATE TABLE " . $this->user_subscriptions_table_name . ' (
@@ -109,7 +104,6 @@ class CategorySubscriptions {
             message varchar(10000),
             to_send boolean DEFAULT TRUE,
             deliver_at datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
-
             UNIQUE KEY id (id),
             KEY user_ID (user_ID),
             KEY post_ID (post_ID),
@@ -117,7 +111,6 @@ class CategorySubscriptions {
             KEY deliver_at (deliver_at)
         ) DEFAULT CHARSET=utf8";
     
-        error_log('init table');
         dbDelta($sql);
 
         update_option("category_subscription_version", $this->category_subscription_version);
