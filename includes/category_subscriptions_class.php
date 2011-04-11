@@ -103,6 +103,7 @@ class CategorySubscriptions {
             subject varchar(250),
             message varchar(10000),
             to_send boolean DEFAULT TRUE,
+            message_sent boolean DEFAULT FALSE,
             deliver_at datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
             UNIQUE KEY id (id),
             KEY user_ID (user_ID),
@@ -126,10 +127,17 @@ class CategorySubscriptions {
 
 
     public function instantiate_messages($post_ID){
+        // If a message is published and there aren't any messages currently slated (or that have been sent previously),
+        // add rows to the database to cause individual messages to be sent.
+        //
+        // If a message *was* published and has been changed back to being not published, remove the messages 
+        // from the table unless they have already been sent.
+
 
     }
 
     public function trash_messages($post_ID){
+        // Remove messages for this post unless they have already been sent.
 
     }
 
@@ -262,7 +270,7 @@ class CategorySubscriptions {
         <option value="yes" <?php echo (($this->use_wp_cron == 'yes') ? 'selected="selected"' : ''); ?>><?php _e('Yes'); ?></option>
         <option value="no" <?php echo (($this->use_wp_cron == 'no') ? 'selected="selected"' : ''); ?>><?php _e('No'); ?></option>
         </select><br/>
-        <span class="description"><?php _e("Deliver email via Wordpress's built-in cron features? If you uncheck this, you'll need to set up a separate cron job to deliver email. You might want to do this if you have large subscriber lists."); ?></span>
+        <span class="description"><?php _e("Deliver email via Wordpress's built-in cron features? If you select \"No\", you'll need to set up a separate cron job to deliver email. You might want to do this if you have large subscriber lists."); ?></span>
       </td>
     </tr>
     </table>

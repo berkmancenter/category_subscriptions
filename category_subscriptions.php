@@ -21,7 +21,6 @@ $cat_sub = new CategorySubscriptions($wpdb);
 
 register_activation_hook(__FILE__,array($cat_sub,'category_subscriptions_install'));
 
-
 // In user_functions.php
 // show options on profile page
 add_action( 'edit_user_profile', array($cat_sub, 'show_profile_fields') );
