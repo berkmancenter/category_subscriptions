@@ -61,7 +61,6 @@ class CategorySubscriptions {
 
         if(get_option('category_subscription_version') != $this->category_subscription_version){
             // Re-init the plugin to apply database changes. Hizz-ott.
-            // TODO - can't run class method from within constructor?
 
             $this->category_subscriptions_install();
         }
@@ -121,10 +120,45 @@ class CategorySubscriptions {
         $cats_to_save = $_POST['category_subscription_categories'];
         $this->wpdb->query( $this->wpdb->prepare( "DELETE FROM $this->user_subscriptions_table_name WHERE user_ID = %d", array($user_ID) ) );
         foreach ($cats_to_save as $cat){
-            $this->wpdb->insert($this->user_subscriptions_table_name, array('category_ID' => $cat, 'user_ID' => $user_ID), array('%d','%d') );
+            $this->wpdb->insert($this->user_subscriptions_table_name, array('category_ID' => $cat, 'user_ID' => $user_ID, 'delivery_time_preference' => $_POST['delivery_time_preference_' . $cat ], 'delivery_format_preference' => $_POST['delivery_format_preference_' . $cat]), array('%d','%d','%s','%s') );
         }
     }
 
+
+    private function create_individual_messages(&$post){
+        // Create stubs for individual messages.
+        // You get here if you are published and don't already have messages in the queue.
+        //
+        // Get the categories for this post, find the users, and then add the rows to the message queue table.
+        // It'd be nice to de-duplicate users because it'd simplify the conditions under instantiate_messages().
+
+        function messages_conditions($a){
+            // nested functions. Yuck. Here's the perl version of what I'm trying to do here:
+            // my $category_conditions = join(' and ', map{'category_ID = ?' } @categories);
+            return 'category_ID = %d';
+        }
+
+        $categories = wp_get_post_categories($post->ID);
+
+        $category_conditions = array_map('messages_conditions',$categories);
+        $parameters = $categories;
+        array_unshift($parameters, 'individual');
+        $conditions = implode(' OR ', $category_conditions);
+        //error_log('parameters: ' . print_r($parameters,true));
+        //error_log('conditions: ' . print_r($conditions,true));
+
+        $subscribers = $this->wpdb->get_col($this->wpdb->prepare("SELECT DISTINCT user_ID from $this->user_subscriptions_table_name where delivery_time_preference = %s AND (" . $conditions . " )", $parameters));
+
+        error_log('Subscribers: ' . print_r($subscribers,true) ); 
+
+        if($subscribers){
+            // There are subscribers to this message.
+        } else {
+            // No subscribers.
+        }
+
+
+    }
 
     public function instantiate_messages($post_ID){
         // If a message is published and there aren't any messages currently slated (or that have been sent previously),
@@ -132,7 +166,26 @@ class CategorySubscriptions {
         //
         // If a message *was* published and has been changed back to being not published, remove the messages 
         // from the table unless they have already been sent.
-
+    
+        $post = get_post($post_ID);
+        $current_messages = $this->wpdb->get_var($this->wpdb->prepare("select count(*) from $this->message_queue_table_name where post_ID = %d", array($post_ID)));
+        if( $post->post_status == 'publish' ){
+            //error_log('Published Post info: ' . print_r($post, true));
+            if($current_messages <= 0){
+                // It's published but there aren't any messages in the queue - so instantiate them if needed.
+                $this->create_individual_messages($post);
+            } else {
+                // It's published but there are individual messages in the queue. 
+                // TODO - re-init messages for users that haven't had them sent yet?
+                
+            }
+        } else {
+            // This post isn't published, or if it was published it isn't any more.
+            // Remove the unsent messages if it was previously published.
+            // One way we will know if it was previously published is by looking 
+            // in the messages queue for existing messages.
+            //error_log('Non published Post info: ' . print_r($post, true));
+        }
 
     }
 
@@ -192,6 +245,9 @@ class CategorySubscriptions {
     $categories = get_categories('hide_empty=0&orderby=name');
     $sql = $this->wpdb->prepare("SELECT category_ID, delivery_time_preference, delivery_format_preference from $this->user_subscriptions_table_name where user_ID = %d", array($user->ID));
     $subscriptions = $this->wpdb->get_results($sql, OBJECT_K);
+
+    error_log(print_r($subscriptions,true));
+    // TODO - Fix persistence below.
 ?>
         <table class="wp-list-table widefat fixed">
           <thead>
@@ -201,23 +257,29 @@ class CategorySubscriptions {
             <th><?php _e('Format'); ?></th>
             </tr>
           </thead><tbody>
-<?php foreach ($categories as $cat){ ?>
+<?php foreach ($categories as $cat){ 
+    $subscription_pref = isset($subscriptions[$cat->cat_ID]) ? $subscriptions[$cat->cat_ID] : NULL;
+    if($subscription_pref) {
+        error_log('Sub pref: ' . print_r($subscription_pref,true));
+        error_log('Sub delivery: ' . $subscription_pref->delivery_format_preference);
+    }
+?>
     <tr>
         <td>
-            <input type="checkbox" name="category_subscription_categories[]" value="<?php echo esc_attr($cat->cat_ID); ?>" id="category_subscription_category_<?php echo $cat->cat_ID; ?>" <?php echo ((isset($subscriptions[$cat->cat_ID])) ? 'checked="checked"' : '') ?> >
+            <input type="checkbox" name="category_subscription_categories[]" value="<?php echo esc_attr($cat->cat_ID); ?>" id="category_subscription_category_<?php echo $cat->cat_ID; ?>" <?php echo (( $subscription_pref ) ? 'checked="checked"' : '') ?> >
             <label for="category_subscription_category_<?php echo $cat->cat_ID; ?>"><?php echo htmlspecialchars($cat->cat_name); ?></label>
         </td>
         <td>
             <select name="delivery_time_preference_<?php echo $cat->cat_ID; ?>">
-                <option name="individual"><?php _e('Immediately'); ?></option>
-                <option name="daily"><?php _e('Daily'); ?></option>
-                <option name="weekly"><?php _e('Weekly'); ?></option>
+                <option value="individual"<?php echo (($subscription_pref && $subscription_pref->delivery_time_preference == 'individual') ? ' selected="selected" ' : ''); ?>><?php _e('Immediately'); ?></option>
+                <option value="daily"<?php echo (($subscription_pref && $subscription_pref->delivery_time_preference == 'daily') ? ' selected="selected" ' : ''); ?>><?php _e('Daily'); ?></option>
+                <option value="weekly"<?php echo (($subscription_pref && $subscription_pref->delivery_time_preference == 'weekly') ? ' selected="selected" ' : ''); ?>><?php _e('Weekly'); ?></option>
             </select>
         </td>
         <td>
             <select name="delivery_format_preference_<?php echo $cat->cat_ID; ?>">
-                <option name="text"><?php _e('Plain text'); ?></option>
-                <option name="html"><?php _e('HTML'); ?></option>
+                <option value="text"<?php echo (($subscription_pref && $subscription_pref->delivery_format_preference == 'text') ? ' selected="selected" ' : ''); ?>><?php _e('Plain text'); ?></option>
+                <option value="html"<?php echo (($subscription_pref && $subscription_pref->delivery_format_preference == 'html') ? ' selected="selected" ' : ''); ?>><?php _e('HTML'); ?></option>
             </select>
         </td>
     </tr>
