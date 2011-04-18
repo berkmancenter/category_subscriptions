@@ -144,19 +144,23 @@ class CategorySubscriptions {
         $parameters = $categories;
         array_unshift($parameters, 'individual');
         $conditions = implode(' OR ', $category_conditions);
-        //error_log('parameters: ' . print_r($parameters,true));
-        //error_log('conditions: ' . print_r($conditions,true));
 
         $subscribers = $this->wpdb->get_col($this->wpdb->prepare("SELECT DISTINCT user_ID from $this->user_subscriptions_table_name where delivery_time_preference = %s AND (" . $conditions . " )", $parameters));
 
-        //error_log('Subscribers: ' . print_r($subscribers,true) ); 
+        $already_getting = $this->wpdb->get_results($this->wpdb->prepare("select user_ID from $this->message_queue_table_name where post_ID = %d",array($post->ID)), OBJECT_K);
+
+        error_log('Subscribers: ' . print_r($subscribers,true) ); 
+        error_log('Already getting: ' . print_r($already_getting,true) ); 
 
         if($subscribers){
             // There are subscribers to this message.
-        } else {
-            // No subscribers.
-        }
-
+            foreach($subscribers as $user_ID){
+                if(! isset($already_getting[$user_ID]) ){
+                    // If they aren't already getting this message, get them in there.
+                    $this->wpdb->insert($this->message_queue_table_name, array('user_ID' => $user_ID, 'post_ID' => $post->ID), array('%d','%d'));
+                }
+            }
+        } 
 
     }
 
@@ -170,15 +174,7 @@ class CategorySubscriptions {
         $post = get_post($post_ID);
         $current_messages = $this->wpdb->get_var($this->wpdb->prepare("select count(*) from $this->message_queue_table_name where post_ID = %d", array($post_ID)));
         if( $post->post_status == 'publish' ){
-            //error_log('Published Post info: ' . print_r($post, true));
-            if($current_messages <= 0){
-                // It's published but there aren't any messages in the queue - so instantiate them if needed.
-                $this->create_individual_messages($post);
-            } else {
-                // It's published but there are individual messages in the queue. 
-                // TODO - re-init messages for users that haven't had them sent yet?
-                
-            }
+            $this->create_individual_messages($post);
         } else {
             // This post isn't published, or if it was published it isn't any more.
             // Remove the unsent messages if it was previously published.
