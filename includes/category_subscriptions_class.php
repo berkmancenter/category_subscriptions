@@ -149,7 +149,7 @@ class CategorySubscriptions {
 
         $subscribers = $this->wpdb->get_col($this->wpdb->prepare("SELECT DISTINCT user_ID from $this->user_subscriptions_table_name where delivery_time_preference = %s AND (" . $conditions . " )", $parameters));
 
-        error_log('Subscribers: ' . print_r($subscribers,true) ); 
+        //error_log('Subscribers: ' . print_r($subscribers,true) ); 
 
         if($subscribers){
             // There are subscribers to this message.
@@ -246,7 +246,7 @@ class CategorySubscriptions {
     $sql = $this->wpdb->prepare("SELECT category_ID, delivery_time_preference, delivery_format_preference from $this->user_subscriptions_table_name where user_ID = %d", array($user->ID));
     $subscriptions = $this->wpdb->get_results($sql, OBJECT_K);
 
-    error_log(print_r($subscriptions,true));
+    //error_log(print_r($subscriptions,true));
     // TODO - Fix persistence below.
 ?>
         <table class="wp-list-table widefat fixed">
@@ -259,10 +259,11 @@ class CategorySubscriptions {
           </thead><tbody>
 <?php foreach ($categories as $cat){ 
     $subscription_pref = isset($subscriptions[$cat->cat_ID]) ? $subscriptions[$cat->cat_ID] : NULL;
-    if($subscription_pref) {
+/*    if($subscription_pref) {
         error_log('Sub pref: ' . print_r($subscription_pref,true));
         error_log('Sub delivery: ' . $subscription_pref->delivery_format_preference);
-    }
+}
+ */
 ?>
     <tr>
         <td>
