@@ -19,16 +19,16 @@ require_once('includes/category_subscriptions_class.php');
 
 $cat_sub = new CategorySubscriptions($wpdb);
 
-register_activation_hook(__FILE__,array($cat_sub,'category_subscriptions_install'));
+register_activation_hook(__FILE__,array( $cat_sub,'category_subscriptions_install' ));
 
 // In user_functions.php
 // show options on profile page
-add_action( 'edit_user_profile', array($cat_sub, 'show_profile_fields') );
-add_action( 'profile_personal_options', array($cat_sub, 'show_profile_fields') );
+add_action( 'edit_user_profile', array( $cat_sub, 'show_profile_fields' ) );
+add_action( 'profile_personal_options', array( $cat_sub, 'show_profile_fields' ) );
 
 // save options from profile page
-add_action( 'personal_options_update', array($cat_sub, 'update_profile_fields') );
-add_action( 'edit_user_profile_update', array($cat_sub, 'update_profile_fields') );
+add_action( 'personal_options_update', array( $cat_sub, 'update_profile_fields' ) );
+add_action( 'edit_user_profile_update', array( $cat_sub, 'update_profile_fields' ) );
 
 // Instantiate messages on post publish
 add_action( 'save_post', array( $cat_sub, 'instantiate_messages' ) );
@@ -37,6 +37,9 @@ add_action( 'save_post', array( $cat_sub, 'instantiate_messages' ) );
 add_action( 'trashed_post', array( $cat_sub, 'trash_messages' ) );
 
 // Admin functions
-add_action( 'admin_menu', array($cat_sub, 'admin_menu') );
+add_action( 'admin_menu', array( $cat_sub, 'admin_menu' ) );
+
+// Cron functions
+add_action( 'cat_sub_send_individual_message_for', array($cat_sub, 'send_individual_messages_for') );
 
 ?>

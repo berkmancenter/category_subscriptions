@@ -127,7 +127,7 @@ class CategorySubscriptions {
 
     private function create_individual_messages(&$post){
         // Create stubs for individual messages.
-        // You get here if you are published and don't already have messages in the queue.
+        // You get here if you are published and don't already have sent messages in the queue.
         //
         // Get the categories for this post, find the users, and then add the rows to the message queue table.
         // It'd be nice to de-duplicate users because it'd simplify the conditions under instantiate_messages().
@@ -160,29 +160,55 @@ class CategorySubscriptions {
                     $this->wpdb->insert($this->message_queue_table_name, array('user_ID' => $user_ID, 'post_ID' => $post->ID), array('%d','%d'));
                 }
             }
+            $next_scheduled = wp_next_scheduled('cat_sub_send_individual_messages_for',array($post->ID));
+
+            error_log('Next scheduled value for:' . print_r($next_scheduled,true));
+
+            if( $next_scheduled == 0 ){
+                // Not currently scheduled.
+                wp_schedule_single_event(time() + 120, 'cat_sub_send_individual_messages_for', array($post->ID));
+            }
         } 
 
     }
 
+/*
+ * If a message is published and there aren't any messages sent previously,
+ * add rows to the database to cause individual messages to be sent.
+ * We check to see if any messages were successfully sent previously to ensure
+ * we aren't sending a message out every time it's edited and published again.
+ *
+ * If a post isn't published, or if it was published but it isn't any more, then we need
+ * to take a slightly different tack.
+ * Remove the unsent messages if it was previously published.
+ * One way we will know if it was previously published is by looking 
+ * in the messages queue for existing sent messages.
+ *
+*/
     public function instantiate_messages($post_ID){
-        // If a message is published and there aren't any messages currently slated (or that have been sent previously),
-        // add rows to the database to cause individual messages to be sent.
-        //
-        // If a message *was* published and has been changed back to being not published, remove the messages 
-        // from the table unless they have already been sent.
     
         $post = get_post($post_ID);
-        $current_messages = $this->wpdb->get_var($this->wpdb->prepare("select count(*) from $this->message_queue_table_name where post_ID = %d", array($post_ID)));
-        if( $post->post_status == 'publish' ){
+
+        $sent_messages = $this->wpdb->get_var($this->wpdb->prepare("select count(*) from $this->message_queue_table_name where post_ID = %d and message_sent is true", array($post_ID)));
+
+        if( $post->post_status == 'publish' && $sent_messages <= 0){
             $this->create_individual_messages($post);
         } else {
-            // This post isn't published, or if it was published it isn't any more.
-            // Remove the unsent messages if it was previously published.
-            // One way we will know if it was previously published is by looking 
-            // in the messages queue for existing messages.
-            //error_log('Non published Post info: ' . print_r($post, true));
+            // We could be a little more precise in how we target removing messages to send
+            // and possibly avoid a few queries, but if a revision post_type gets scheduled 
+            // to be emailed that would be a pretty big problem.
+            // error_log('Unpublished post info:' . print_r($post,true));
+            // Not published. Delete unsent messages.
+            //
+            $this->wpdb->query($this->wpdb->prepare("DELETE from $this->message_queue_table_name where post_ID = %d and to_send is true", array($post_ID)));
+            wp_unschedule_event('cat_sub_send_individual_messages_for',array($post->ID));
         }
 
+    }
+
+    public function send_individual_messages_for($post_ID){
+        error_log('Sending individual messages for ' . $post_ID);
+        $post = get_post($post_ID);
     }
 
     public function trash_messages($post_ID){
