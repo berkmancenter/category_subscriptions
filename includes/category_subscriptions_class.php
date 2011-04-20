@@ -8,6 +8,9 @@ class CategorySubscriptions {
     var $max_batch = 50;
     var $use_wp_cron = 'yes';
 
+    // 0 == Sunday, 6 == Saturday
+    var $send_weekly_email_on = 0;
+
     var $daily_email_subject = 'Daily Digest for [DAY], [CATEGORY] - [SITETITLE]';
     var $daily_email_html_template = '';
     var $daily_email_text_template = '';
@@ -29,6 +32,7 @@ class CategorySubscriptions {
     var $editable_options = array(
         'max_batch', 
         'use_wp_cron',
+        'send_weekly_email_on',
 
         'daily_email_subject',
         'daily_email_html_template',
@@ -114,13 +118,23 @@ class CategorySubscriptions {
         dbDelta($sql);
 
         update_option("category_subscription_version", $this->category_subscription_version);
+        wp_schedule_event(time(), 'daily', 'my_cat_sub_send_daily_messages');
+        wp_schedule_event(time(), 'daily', 'my_cat_sub_send_weekly_messages');
+
+    }
+
+    public function category_subscriptions_deactivate(){
+        wp_clear_scheduled_hook('my_cat_sub_send_daily_messages');
+        wp_clear_scheduled_hook('my_cat_sub_send_weekly_messages');
     } 
 
     public function update_profile_fields ( $user_ID ){
-        $cats_to_save = $_POST['category_subscription_categories'];
+        $cats_to_save = (isset($_POST['category_subscription_categories'])) ? $_POST['category_subscription_categories'] : false;
         $this->wpdb->query( $this->wpdb->prepare( "DELETE FROM $this->user_subscriptions_table_name WHERE user_ID = %d", array($user_ID) ) );
-        foreach ($cats_to_save as $cat){
-            $this->wpdb->insert($this->user_subscriptions_table_name, array('category_ID' => $cat, 'user_ID' => $user_ID, 'delivery_time_preference' => $_POST['delivery_time_preference_' . $cat ], 'delivery_format_preference' => $_POST['delivery_format_preference_' . $cat]), array('%d','%d','%s','%s') );
+        if($cats_to_save){
+            foreach ($cats_to_save as $cat){
+                $this->wpdb->insert($this->user_subscriptions_table_name, array('category_ID' => $cat, 'user_ID' => $user_ID, 'delivery_time_preference' => $_POST['delivery_time_preference_' . $cat ], 'delivery_format_preference' => $_POST['delivery_format_preference_' . $cat]), array('%d','%d','%s','%s') );
+            }
         }
     }
 
@@ -160,13 +174,13 @@ class CategorySubscriptions {
                     $this->wpdb->insert($this->message_queue_table_name, array('user_ID' => $user_ID, 'post_ID' => $post->ID), array('%d','%d'));
                 }
             }
-            $next_scheduled = wp_next_scheduled('cat_sub_send_individual_messages_for',array($post->ID));
+            $next_scheduled = wp_next_scheduled('my_cat_sub_send_individual_messages',array($post->ID));
 
             error_log('Next scheduled value for:' . print_r($next_scheduled,true));
 
             if( $next_scheduled == 0 ){
                 // Not currently scheduled.
-                wp_schedule_single_event(time() + 120, 'cat_sub_send_individual_messages_for', array($post->ID));
+                wp_schedule_single_event(time() + 120, 'my_cat_sub_send_individual_messages', array($post->ID));
             }
         } 
 
@@ -201,14 +215,35 @@ class CategorySubscriptions {
             // Not published. Delete unsent messages.
             //
             $this->wpdb->query($this->wpdb->prepare("DELETE from $this->message_queue_table_name where post_ID = %d and to_send is true", array($post_ID)));
-            wp_unschedule_event('cat_sub_send_individual_messages_for',array($post->ID));
+            wp_unschedule_event('my_cat_sub_send_individual_messages',array($post->ID));
         }
 
     }
 
+    public function send_daily_messages() {
+        // TODO
+    }
+
+    public function send_weekly_messages() {
+        if(date('w') == $this->send_weekly_email_on){
+            // Tonight's the night!
+
+        }
+    }
+
     public function send_individual_messages_for($post_ID){
-        error_log('Sending individual messages for ' . $post_ID);
         $post = get_post($post_ID);
+
+
+
+        $message_count = $this->wpdb->get_var($this->wpdb->prepare("select count(*) from $this->message_queue_table_name where post_ID = %d and to_send = true"));
+        if($message_count > 0){
+            // more messages to send. Reschedule.
+            wp_schedule_single_event(time() + 120, 'my_cat_sub_send_individual_messages', array($post->ID));
+        }
+
+
+
     }
 
     public function trash_messages($post_ID){
@@ -346,6 +381,21 @@ class CategorySubscriptions {
       <td>
       <input type="text" name="cat_sub_max_batch" value="<?php echo esc_attr($this->max_batch); ?>" size="10" /><br />
         <span class="description"><?php _e('How many emails should we send per cron run?') ?></span>
+      </td>
+    </tr>
+    <tr>
+    <tr>
+    <th><label for="cat_sub_send_weekly_email_on"><?php _e('Send weekly digest emails on');  ?></label></th>
+      <td>
+        <select name="cat_sub_send_weekly_email_on">
+        <option value="0" <?php echo (($this->send_weekly_email_on == 0) ? 'selected="selected"' : '') ?>><?php _e('Sunday'); ?></option>
+        <option value="1" <?php echo (($this->send_weekly_email_on == 1) ? 'selected="selected"' : '') ?>><?php _e('Monday'); ?></option>
+        <option value="2" <?php echo (($this->send_weekly_email_on == 2) ? 'selected="selected"' : '') ?>><?php _e('Tuesday'); ?></option>
+        <option value="3" <?php echo (($this->send_weekly_email_on == 3) ? 'selected="selected"' : '') ?>><?php _e('Wednesday'); ?></option>
+        <option value="4" <?php echo (($this->send_weekly_email_on == 4) ? 'selected="selected"' : '') ?>><?php _e('Thursday'); ?></option>
+        <option value="5" <?php echo (($this->send_weekly_email_on == 5) ? 'selected="selected"' : '') ?>><?php _e('Friday'); ?></option>
+        <option value="6" <?php echo (($this->send_weekly_email_on == 6) ? 'selected="selected"' : '') ?>><?php _e('Saturday'); ?></option>
+        </select>
       </td>
     </tr>
     <tr>

@@ -19,9 +19,15 @@ require_once('includes/category_subscriptions_class.php');
 
 $cat_sub = new CategorySubscriptions($wpdb);
 
-register_activation_hook(__FILE__,array( $cat_sub,'category_subscriptions_install' ));
+// Cron functions
+add_action( 'my_cat_sub_send_individual_messages', array($cat_sub, 'send_individual_messages_for') );
+add_action( 'my_cat_sub_send_daily_messages', array($cat_sub, 'send_daily_messages') );
+add_action( 'my_sub_send_weekly_messages', array($cat_sub, 'send_weekly_messages') );
 
-// In user_functions.php
+// Activation, de-activation
+register_activation_hook(__FILE__,array( $cat_sub,'category_subscriptions_install' ));
+register_deactivation_hook(__FILE__,array( $cat_sub,'category_subscriptions_deactivate' ));
+
 // show options on profile page
 add_action( 'edit_user_profile', array( $cat_sub, 'show_profile_fields' ) );
 add_action( 'profile_personal_options', array( $cat_sub, 'show_profile_fields' ) );
@@ -38,8 +44,5 @@ add_action( 'trashed_post', array( $cat_sub, 'trash_messages' ) );
 
 // Admin functions
 add_action( 'admin_menu', array( $cat_sub, 'admin_menu' ) );
-
-// Cron functions
-add_action( 'cat_sub_send_individual_message_for', array($cat_sub, 'send_individual_messages_for') );
 
 ?>
