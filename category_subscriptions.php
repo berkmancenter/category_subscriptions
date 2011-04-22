@@ -13,11 +13,22 @@ Version: 0.1
 Author URI: http://collispuro.com
 */
 
+// Need get_userdata()
+require_once(ABSPATH . 'wp-includes/pluggable.php');
+
 global $wpdb;
 
 require_once('includes/category_subscriptions_class.php');
+require_once('includes/category_subscriptions_message.php');
+require_once('includes/category_subscriptions_template.php');
 
 $cat_sub = new CategorySubscriptions($wpdb);
+
+$tmpl = new CategorySubscriptionsTemplate($cat_sub);
+
+$message = $wpdb->get_row("select * from $cat_sub->message_queue_table_name LIMIT 1");
+
+$tmpl->fill_individual_message($message);
 
 // Cron functions
 add_action( 'my_cat_sub_send_individual_messages', array($cat_sub, 'send_individual_messages_for') );

@@ -11,19 +11,47 @@ class CategorySubscriptions {
     // 0 == Sunday, 6 == Saturday
     var $send_weekly_email_on = 0;
 
-    var $daily_email_subject = 'Daily Digest for [DAY], [CATEGORY] - [SITETITLE]';
+    var $daily_email_subject = 'Daily Digest for [DAY], [CATEGORY] - [SITE_TITLE]';
     var $daily_email_html_template = '';
     var $daily_email_text_template = '';
     var $daily_email_type = '';
 
-    var $weekly_email_subject = 'Weekly Digest for [WEEK], [CATEGORY] - [SITETITLE]';
+    var $weekly_email_subject = 'Weekly Digest for [WEEK], [CATEGORY] - [SITE_TITLE]';
     var $weekly_email_html_template = '';
     var $weekly_email_text_template = '';
     var $weekly_email_type = '';
 
-    var $individual_email_subject = '[SUBJECT], [CATEGORY] - [SITETITLE]';
-    var $individual_email_html_template = '';
-    var $individual_email_text_template = '';
+    var $individual_email_subject = '[SUBJECT], [CATEGORY] - [SITE_TITLE]';
+
+    var $individual_email_html_template = '<p>Dear [USER_FIRSTNAME],</p>
+        <p>A new post has been added to one of your subscriptions at [SITE_TITLE].</p>
+        <hr />
+        <h2>[SUBJECT] - [CATEGORIES]</h2>
+        <h3>by [AUTHOR] on [DATE]</h3>
+        [POST_CONTENT]
+
+        <hr />
+        <p>You can manage your subscriptions <a href="[PROFILE_URL]">here</a>.</p>';
+
+    var $individual_email_text_template = 'Dear [FIRST_NAME],
+
+A new post has been added to one of your subscriptions at:
+[SITE_TITLE]
+
+_____________________________________________________________
+
+[SUBJECT] - [CATEGORIES]
+
+by [AUTHOR] on [DATE]
+
+[POST_CONTENT]
+
+_____________________________________________________________
+
+You can manage your subscriptions here:
+[PROFILE_URL]
+';
+
     var $individual_email_type = '';
 
     var $email_row_html_template = '';
@@ -77,8 +105,8 @@ class CategorySubscriptions {
     }
 
     # PHP 4 constructor
-    public function CategorySubscriptions() {
-        return $this->__construct();
+    public function CategorySubscriptions(&$wpdb) {
+        return $this->__construct($wpdb);
     }
 
     public function category_subscriptions_install(){
@@ -101,6 +129,7 @@ class CategorySubscriptions {
 
         $sql = "CREATE TABLE " . $this->message_queue_table_name . " (
             id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            message_type ENUM('individual','daily','weekly') not null default 'individual',
             user_ID bigint(20) UNSIGNED,
             post_ID bigint(20) UNSIGNED,
             subject varchar(250),
@@ -161,7 +190,7 @@ class CategorySubscriptions {
 
         $subscribers = $this->wpdb->get_col($this->wpdb->prepare("SELECT DISTINCT user_ID from $this->user_subscriptions_table_name where delivery_time_preference = %s AND (" . $conditions . " )", $parameters));
 
-        $already_getting = $this->wpdb->get_results($this->wpdb->prepare("select user_ID from $this->message_queue_table_name where post_ID = %d",array($post->ID)), OBJECT_K);
+        $already_getting = $this->wpdb->get_results($this->wpdb->prepare("select user_ID from $this->message_queue_table_name where post_ID = %d and message_type = 'individual'",array($post->ID)), OBJECT_K);
 
         error_log('Subscribers: ' . print_r($subscribers,true) ); 
         error_log('Already getting: ' . print_r($already_getting,true) ); 
@@ -171,7 +200,7 @@ class CategorySubscriptions {
             foreach($subscribers as $user_ID){
                 if(! isset($already_getting[$user_ID]) ){
                     // If they aren't already getting this message, get them in there.
-                    $this->wpdb->insert($this->message_queue_table_name, array('user_ID' => $user_ID, 'post_ID' => $post->ID), array('%d','%d'));
+                    $this->wpdb->insert($this->message_queue_table_name, array('user_ID' => $user_ID, 'post_ID' => $post->ID, 'message_type' => 'individual'), array('%d','%d','%s'));
                 }
             }
             $next_scheduled = wp_next_scheduled('my_cat_sub_send_individual_messages',array($post->ID));
@@ -203,7 +232,7 @@ class CategorySubscriptions {
     
         $post = get_post($post_ID);
 
-        $sent_messages = $this->wpdb->get_var($this->wpdb->prepare("select count(*) from $this->message_queue_table_name where post_ID = %d and message_sent is true", array($post_ID)));
+        $sent_messages = $this->wpdb->get_var($this->wpdb->prepare("select count(*) from $this->message_queue_table_name where post_ID = %d and message_sent is true and message_type = 'individual'", array($post_ID)));
 
         if( $post->post_status == 'publish' && $sent_messages <= 0){
             $this->create_individual_messages($post);
@@ -214,7 +243,7 @@ class CategorySubscriptions {
             // error_log('Unpublished post info:' . print_r($post,true));
             // Not published. Delete unsent messages.
             //
-            $this->wpdb->query($this->wpdb->prepare("DELETE from $this->message_queue_table_name where post_ID = %d and to_send is true", array($post_ID)));
+            $this->wpdb->query($this->wpdb->prepare("DELETE from $this->message_queue_table_name where post_ID = %d and message_type = 'individual' and to_send is true", array($post_ID)));
             wp_unschedule_event('my_cat_sub_send_individual_messages',array($post->ID));
         }
 
@@ -231,12 +260,30 @@ class CategorySubscriptions {
         }
     }
 
+    /*
+     * Get the messages to send up to the max_batch size. Template them and deliver, rescheduling if there are still more
+     * to deliver for this post.
+     *
+     * Invoked via wp-cron.
+     *
+     */
     public function send_individual_messages_for($post_ID){
         $post = get_post($post_ID);
+    
+        $to_send = $this->wpdb->get_results( $this->wpdb->prepare("SELECT * FROM $this->message_queue_table_name WHERE post_ID = %d AND message_type = 'individual' AND to_send = true LIMIT %d", array( $post_ID, $this->max_batch )));
 
+        $tmpl = new CategorySubscriptionsTemplate($this);
 
+        foreach($to_send as $message){
+            // Get the user object and fill template variables based on the user's preference.
+            // We need to fill the template variables dynamically for every string.
+            $message_content = $tmpl->fill_individual_message($message);
+            
+           error_log('Message content is: ' . $message_content); 
 
-        $message_count = $this->wpdb->get_var($this->wpdb->prepare("select count(*) from $this->message_queue_table_name where post_ID = %d and to_send = true"));
+        }
+
+        $message_count = $this->wpdb->get_var($this->wpdb->prepare("SELECT count(*) from $this->message_queue_table_name WHERE post_ID = %d AND message_type = 'individual' AND to_send = true", array($post_ID)));
         if($message_count > 0){
             // more messages to send. Reschedule.
             wp_schedule_single_event(time() + 120, 'my_cat_sub_send_individual_messages', array($post->ID));
