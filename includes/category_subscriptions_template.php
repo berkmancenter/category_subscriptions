@@ -32,6 +32,10 @@ class CategorySubscriptionsTemplate {
     }
 
     public function create_post_replacements(&$post){
+        // TODO
+        // CATEGORIES
+        // EXCERPT, except as piped through the_excerpt()
+
         $this->post_template_values = array();
         foreach($this->post_template_variables as $opt){
             array_push($this->post_template_values, $post->{strtolower($opt)});
@@ -45,7 +49,6 @@ class CategorySubscriptionsTemplate {
         }
     }
 
-
     public function fill_individual_message(&$message){
         $user = get_userdata($message->user_ID);
         $post = get_post($message->post_ID);
@@ -55,11 +58,11 @@ class CategorySubscriptionsTemplate {
         $patterns = array();
         $patterns_tmp = array_merge($this->bloginfo_template_variables, $this->user_template_variables, $this->post_template_variables);
         foreach($patterns_tmp as $pat){
-            array_push($patterns, '\[' . $pat . '\]');
+            array_push($patterns, '/\[' . $pat . '\]/');
         }
         $variables = array_merge($this->bloginfo_template_values, $this->user_template_values, $this->post_template_values);
 
-        $message = preg_replace($patterns, $variables, $message->individual_email_html_template);
+        $message = preg_replace($patterns, $variables, $this->cat_sub->individual_email_html_template);
 
         error_log($message);
 

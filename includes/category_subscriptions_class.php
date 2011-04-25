@@ -21,12 +21,12 @@ class CategorySubscriptions {
     var $weekly_email_text_template = '';
     var $weekly_email_type = '';
 
-    var $individual_email_subject = '[SUBJECT], [CATEGORY] - [SITE_TITLE]';
+    var $individual_email_subject = '[SUBJECT], [CATEGORIES] - [SITE_TITLE]';
 
-    var $individual_email_html_template = '<p>Dear [USER_FIRSTNAME],</p>
-        <p>A new post has been added to one of your subscriptions at [SITE_TITLE].</p>
+    var $individual_email_html_template = '<p>Dear [USER_LOGIN],</p>
+        <p>A new post has been added to one of your subscriptions at <a href="[URL]">[NAME]</a>.</p>
         <hr />
-        <h2>[SUBJECT] - [CATEGORIES]</h2>
+        <h2>[POST_TITLE] - [CATEGORIES]</h2>
         <h3>by [AUTHOR] on [DATE]</h3>
         [POST_CONTENT]
 
