@@ -11,6 +11,9 @@ class CategorySubscriptions {
     // 0 == Sunday, 6 == Saturday
     var $send_weekly_email_on = 0;
 
+    var $from_address = '';
+    var $reply_to_address = '';
+
     var $daily_email_subject = 'Daily Digest for [DAY], [CATEGORY] - [SITE_TITLE]';
     var $daily_email_html_template = '';
     var $daily_email_text_template = '';
@@ -61,6 +64,8 @@ You can manage your subscriptions here:
         'max_batch', 
         'use_wp_cron',
         'send_weekly_email_on',
+        'from_address',
+        'reply_to_address',
 
         'daily_email_subject',
         'daily_email_html_template',
@@ -116,12 +121,10 @@ You can manage your subscriptions here:
             id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
             category_ID bigint(20) UNSIGNED,
             delivery_time_preference ENUM("individual","daily","weekly") not null default "individual",
-            delivery_format_preference ENUM("html","text") not null default "text",
             user_ID bigint(20) UNSIGNED,
             UNIQUE KEY id (id),
           KEY category_ID (category_ID),
           KEY delivery_time_preference (delivery_time_preference),
-          KEY delivery_format_preference (delivery_format_preference),
           KEY user_ID (user_ID)
       ) DEFAULT CHARSET=utf8';
 
@@ -162,9 +165,10 @@ You can manage your subscriptions here:
         $this->wpdb->query( $this->wpdb->prepare( "DELETE FROM $this->user_subscriptions_table_name WHERE user_ID = %d", array($user_ID) ) );
         if($cats_to_save){
             foreach ($cats_to_save as $cat){
-                $this->wpdb->insert($this->user_subscriptions_table_name, array('category_ID' => $cat, 'user_ID' => $user_ID, 'delivery_time_preference' => $_POST['delivery_time_preference_' . $cat ], 'delivery_format_preference' => $_POST['delivery_format_preference_' . $cat]), array('%d','%d','%s','%s') );
+                $this->wpdb->insert($this->user_subscriptions_table_name, array('category_ID' => $cat, 'user_ID' => $user_ID, 'delivery_time_preference' => stripslashes($_POST['delivery_time_preference_' . $cat ])), array('%d','%d','%s') );
             }
         }
+        update_user_meta($user_ID,'cat_sub_delivery_format_pref', stripslashes($_POST['cat_sub_delivery_format_pref_' . $user_ID]));
     }
 
 
@@ -302,9 +306,20 @@ You can manage your subscriptions here:
       wp_enqueue_style('admin.css');
       wp_enqueue_script('jquery.cookie.js');
       wp_enqueue_script('admin.js');
+
       echo '<h3>' . __('Email Updates') . '</h3>';
       echo '<p>' . __('Please select the types of updates you\'d like to receive') . '</p>';
       echo $this->category_list($user);
+?><table class="form-table">
+<tr>
+<th><label for="cat_sub_delivery_format_pref_<?php echo $user->ID ?>"><?php _e('Email format preference'); ?></label></th>
+<td><select name="cat_sub_delivery_format_pref_<?php echo $user->ID ?>" id="cat_sub_delivery_format_pref_<?php echo $user->ID ?>">
+<option value="html" <?php echo (get_user_meta($user->ID, 'cat_sub_delivery_format_pref',true) == 'html') ? 'selected="selected"' : ''; ?>>HTML</option>
+<option value="text" <?php echo (get_user_meta($user->ID, 'cat_sub_delivery_format_pref',true) == 'text') ? 'selected="selected"' : ''; ?>>Text</option>
+</select></td>
+</tr>
+</table>
+<?php
     } 
 
     private function create_email_template_form_elements($type){ 
@@ -314,7 +329,7 @@ You can manage your subscriptions here:
     <table class="form-table toggler_target" id="<?php echo $type;?>_target">
     <tr>
     <th><label for="cat_sub_<?php echo $type;?>_email_subject"><?php _e('Subject line template for ' . $type .' emails'); ?></label></th>
-    <td><input type="text" id="cat_sub_<?php echo $type;?>_email_subject" name="cat_sub_<?php echo $type;?>_email_subject" value="<?php echo esc_attr($this->{$type .'_email_subject'}); ?>" size="70" /><br/>
+    <td><input type="text" id="cat_sub_<?php echo $type;?>_email_subject" name="cat_sub_<?php echo $type;?>_email_subject" value="<?php echo esc_attr($this->{$type .'_email_subject'}); ?>" size="70" />
     </td>
     </tr>
     <tr>
@@ -347,25 +362,23 @@ You can manage your subscriptions here:
     private function category_list($user) {
     //TODO
     $categories = get_categories('hide_empty=0&orderby=name');
-    $sql = $this->wpdb->prepare("SELECT category_ID, delivery_time_preference, delivery_format_preference from $this->user_subscriptions_table_name where user_ID = %d", array($user->ID));
+    $sql = $this->wpdb->prepare("SELECT category_ID, delivery_time_preference from $this->user_subscriptions_table_name where user_ID = %d", array($user->ID));
     $subscriptions = $this->wpdb->get_results($sql, OBJECT_K);
 
     //error_log(print_r($subscriptions,true));
     // TODO - Fix persistence below.
 ?>
-        <table class="wp-list-table widefat fixed">
+        <table class="wp-list-table widefat fixed" style="width: 50%; margin-top: 1em;">
           <thead>
             <tr>
             <th><?php _e('Category'); ?></th>
             <th><?php _e('Frequency'); ?></th>
-            <th><?php _e('Format'); ?></th>
             </tr>
           </thead><tbody>
 <?php foreach ($categories as $cat){ 
     $subscription_pref = isset($subscriptions[$cat->cat_ID]) ? $subscriptions[$cat->cat_ID] : NULL;
 /*    if($subscription_pref) {
         error_log('Sub pref: ' . print_r($subscription_pref,true));
-        error_log('Sub delivery: ' . $subscription_pref->delivery_format_preference);
 }
  */
 ?>
@@ -379,12 +392,6 @@ You can manage your subscriptions here:
                 <option value="individual"<?php echo (($subscription_pref && $subscription_pref->delivery_time_preference == 'individual') ? ' selected="selected" ' : ''); ?>><?php _e('Immediately'); ?></option>
                 <option value="daily"<?php echo (($subscription_pref && $subscription_pref->delivery_time_preference == 'daily') ? ' selected="selected" ' : ''); ?>><?php _e('Daily'); ?></option>
                 <option value="weekly"<?php echo (($subscription_pref && $subscription_pref->delivery_time_preference == 'weekly') ? ' selected="selected" ' : ''); ?>><?php _e('Weekly'); ?></option>
-            </select>
-        </td>
-        <td>
-            <select name="delivery_format_preference_<?php echo $cat->cat_ID; ?>">
-                <option value="text"<?php echo (($subscription_pref && $subscription_pref->delivery_format_preference == 'text') ? ' selected="selected" ' : ''); ?>><?php _e('Plain text'); ?></option>
-                <option value="html"<?php echo (($subscription_pref && $subscription_pref->delivery_format_preference == 'html') ? ' selected="selected" ' : ''); ?>><?php _e('HTML'); ?></option>
             </select>
         </td>
     </tr>
@@ -410,7 +417,7 @@ You can manage your subscriptions here:
 
             $updated = true;
             foreach($this->editable_options as $opt){
-                $this->{$opt} = $_POST['cat_sub_' . $opt];
+                $this->{$opt} = stripslashes($_POST['cat_sub_' . $opt]);
                 update_option('cat_sub_'. $opt, $this->{$opt});
             }
         }
@@ -454,6 +461,16 @@ You can manage your subscriptions here:
         </select><br/>
         <span class="description"><?php _e("Deliver email via Wordpress's built-in cron features? If you select \"No\", you'll need to set up a separate cron job to deliver email. You might want to do this if you have large subscriber lists."); ?></span>
       </td>
+    </tr>
+    <tr>
+        <th><label for="cat_sub_from_address"><?php _e('From address for messages'); ?></label></th>
+        <td><input type="text" id="cat_sub_from_address" name="cat_sub_from_address" value="<?php echo esc_attr($this->from_address); ?>" size="70" /><br/>
+        <span class="description"><?php _e('Defaults to your "Admin Email" setting'); ?></span>
+    </tr>
+    <tr>
+        <th><label for="cat_sub_reply_to_address"><?php _e('Reply to address for messages'); ?></label></th>
+        <td><input type="text" id="cat_sub_reply_to_address" name="cat_sub_reply_to_address" value="<?php echo esc_attr($this->reply_to_address); ?>" size="70" /><br/>
+        <span class="description"><?php _e('Defaults to your "Admin Email" setting'); ?></span>
     </tr>
     </table>
 
