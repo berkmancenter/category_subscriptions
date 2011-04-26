@@ -6,7 +6,7 @@ class CategorySubscriptions {
     var $wpdb = '';
 
     var $max_batch = 50;
-    var $use_wp_cron = 'yes';
+    var $send_delay = 120;
 
     // 0 == Sunday, 6 == Saturday
     var $send_weekly_email_on = 0;
@@ -18,12 +18,10 @@ class CategorySubscriptions {
     var $daily_email_subject = 'Daily Digest for [DAY], [CATEGORY] - [SITE_TITLE]';
     var $daily_email_html_template = '';
     var $daily_email_text_template = '';
-    var $daily_email_type = '';
 
     var $weekly_email_subject = 'Weekly Digest for [WEEK], [CATEGORY] - [SITE_TITLE]';
     var $weekly_email_html_template = '';
     var $weekly_email_text_template = '';
-    var $weekly_email_type = '';
 
     var $individual_email_subject = '[POST_TITLE], [CATEGORIES] - [SITE_TITLE]';
 
@@ -44,7 +42,7 @@ A new post has been added to one of your subscriptions at:
 
 _____________________________________________________________
 
-[SUBJECT] - [CATEGORIES]
+[POST_TITLE] - [CATEGORIES]
 
 by [AUTHOR] on [DATE]
 
@@ -56,14 +54,12 @@ You can manage your subscriptions here:
 [PROFILE_URL]
 ';
 
-    var $individual_email_type = '';
-
     var $email_row_html_template = '';
     var $email_row_text_template = '';
 
     var $editable_options = array(
-        'max_batch', 
-        'use_wp_cron',
+        'max_batch',
+        'send_delay',
         'send_weekly_email_on',
         'from_address',
         'reply_to_address',
@@ -72,17 +68,14 @@ You can manage your subscriptions here:
         'daily_email_subject',
         'daily_email_html_template',
         'daily_email_text_template',
-        'daily_email_type',
 
         'weekly_email_subject',
         'weekly_email_html_template',
         'weekly_email_text_template',
-        'weekly_email_type',
 
         'individual_email_subject',
         'individual_email_html_template',
         'individual_email_text_template',
-        'individual_email_type',
 
         'email_row_text_template',
         'email_row_html_template'
@@ -215,10 +208,9 @@ You can manage your subscriptions here:
 
             if( $next_scheduled == 0 ){
                 // Not currently scheduled.
-                wp_schedule_single_event(time() + 120, 'my_cat_sub_send_individual_messages', array($post->ID));
+                wp_schedule_single_event(time() + $this->send_delay, 'my_cat_sub_send_individual_messages', array($post->ID));
             }
         } 
-
     }
 
 /*
@@ -299,7 +291,7 @@ You can manage your subscriptions here:
         $message_count = $this->wpdb->get_var($this->wpdb->prepare("SELECT count(*) from $this->message_queue_table_name WHERE post_ID = %d AND message_type = 'individual' AND to_send = true", array($post_ID)));
         if($message_count > 0){
             // more messages to send. Reschedule.
-            wp_schedule_single_event(time() + 120, 'my_cat_sub_send_individual_messages', array($post->ID));
+            wp_schedule_single_event(time() + 60, 'my_cat_sub_send_individual_messages', array($post->ID));
         }
 
 
@@ -349,24 +341,10 @@ You can manage your subscriptions here:
         <th><label for="cat_sub_<?php echo $type;?>_email_text_template"><?php _e('Plain text email template for ' . $type .' emails'); ?></label></th>
         <td><textarea id="cat_sub_<?php echo $type;?>_email_text_template" rows="10" cols="70" name="cat_sub_<?php echo $type; ?>_email_text_template"><?php echo esc_textarea($this->{$type . '_email_text_template'}); ?></textarea></td>
     </tr>
-        <?php $this->default_email_type_list($type); ?>
     </tr>
   </table>
 <?php 
 }
-
-    private function default_email_type_list($email_type) {
-    ?>
-        <tr>
-            <th><label for="cat_sub_<?php echo $email_type; ?>_email_type"><?php _e('Send out this type of email by default for ' . $email_type .' emails.'); ?></label></th>
-            <td>
-                <select name="cat_sub_<?php echo $email_type; ?>_email_type">
-                    <option value="html" <?php ($this->{$email_type . '_email_type'} == 'html') ? ' selected="selected"' : '' ?>><?php _e('Multipart HTML'); ?></option>
-                    <option value="text"<?php ($this->{$email_type . '_email_type'} == 'text') ? ' selected="selected"' : '' ?>><?php _e('Text only'); ?></option>
-                </select>
-            </td>
-        </tr>
-<?php }
 
     private function category_list($user) {
     //TODO
@@ -447,7 +425,6 @@ You can manage your subscriptions here:
       </td>
     </tr>
     <tr>
-    <tr>
     <th><label for="cat_sub_send_weekly_email_on"><?php _e('Send weekly digest emails on');  ?></label></th>
       <td>
         <select name="cat_sub_send_weekly_email_on">
@@ -462,13 +439,17 @@ You can manage your subscriptions here:
       </td>
     </tr>
     <tr>
-    <th><label for="cat_sub_use_wp_cron"><?php _e('Use built-in cron?'); ?></label></th>
+    <th><label for="cat_sub_send_delay"><?php _e('Wait this long before sending out published posts');  ?></label></th>
       <td>
-        <select name="cat_sub_use_wp_cron">
-        <option value="yes" <?php echo (($this->use_wp_cron == 'yes') ? 'selected="selected"' : ''); ?>><?php _e('Yes'); ?></option>
-        <option value="no" <?php echo (($this->use_wp_cron == 'no') ? 'selected="selected"' : ''); ?>><?php _e('No'); ?></option>
-        </select><br/>
-        <span class="description"><?php _e("Deliver email via Wordpress's built-in cron features? If you select \"No\", you'll need to set up a separate cron job to deliver email. You might want to do this if you have large subscriber lists."); ?></span>
+        <select name="cat_sub_send_delay">
+        <option value="0" <?php echo (($this->send_delay == 0) ? 'selected="selected"' : '') ?>><?php _e("Don't wait, send ASAP"); ?></option>
+        <option value="60" <?php echo (($this->send_delay == 60) ? 'selected="selected"' : '') ?>><?php _e('1 minute'); ?></option>
+        <option value="120" <?php echo (($this->send_delay == 120) ? 'selected="selected"' : '') ?>><?php _e('2 minutes'); ?></option>
+        <option value="300" <?php echo (($this->send_delay == 300) ? 'selected="selected"' : '') ?>><?php _e('5 minutes'); ?></option>
+        <option value="600" <?php echo (($this->send_delay == 600) ? 'selected="selected"' : '') ?>><?php _e('10 minutes'); ?></option>
+        <option value="3600" <?php echo (($this->send_delay == 3600) ? 'selected="selected"' : '') ?>><?php _e('1 hour'); ?></option>
+        </select>
+        <br/><span class="description"><?php _e('If you unpublish a post before this time limit is reached, the notices will not be sent out. This gives you a handy "undo" time period in case you notice an error right after publishing a post.'); ?></span>
       </td>
     </tr>
     <tr>
@@ -495,7 +476,7 @@ You can manage your subscriptions here:
     <ul>
         <li><?php _e('All email templates - daily, weekly, individual - share the same tags. So, for example, you can put [FIRST_NAME] in the subject line or body of any email template and it\'ll work the same.'); ?></li>
         <li><?php _e('An "email row template" defines the template used in digest emails to display the list of messages. Each individual message has this template applied to it, and is then put in the [EMAILLIST] template tag for your daily or weekly digest.'); ?></li>
-        <li><?php _e('You should be sure both the HTML and plain text templates are kept up to date. They will both be used when you create HTML messages so that the maximum number of users can read your content.') ?></li>
+        <li><?php _e('You should be sure both the HTML and plain text templates are kept up to date, as your subscribers have the ability to choose the format themselves.') ?></li>
     </ul>
 
     <?php $this->create_email_template_form_elements('individual') ?>
