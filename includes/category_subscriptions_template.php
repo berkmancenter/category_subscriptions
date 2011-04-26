@@ -16,12 +16,12 @@ class CategorySubscriptionsTemplate {
         // Instantiate variables that will be available everywhere.
 
         $global_variable_callbacks = array(
-            'PROFILE_URL' => function () { return admin_url('profile.php'); },
-            'SITE_TITLE' => function () { return get_bloginfo('name'); },
-            'DESCRIPTION' => function () { return get_bloginfo('description'); },
-            'SITE_URL' => function () { return get_bloginfo('url'); },
-            'ADMIN_EMAIL' => function () { return get_bloginfo('admin_email');},
-            'STYLESHEET_DIRECTORY' => function (){ return get_bloginfo('stylesheet_directory');}
+            'PROFILE_URL' => create_function( '', 'return admin_url("profile.php");' ),
+            'SITE_TITLE' => create_function( '', 'return get_bloginfo("name");' ),
+            'DESCRIPTION' => create_function( '', 'return get_bloginfo("description");'),
+            'SITE_URL' => create_function( '', 'return get_bloginfo("url");' ),
+            'ADMIN_EMAIL' => create_function('', 'return get_bloginfo("admin_email");' ),
+            'STYLESHEET_DIRECTORY' => create_function( '', 'return get_bloginfo("stylesheet_directory");' )
         );
 
         foreach($global_variable_callbacks as $key => $value){
