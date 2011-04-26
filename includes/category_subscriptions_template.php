@@ -4,10 +4,10 @@ class CategorySubscriptionsTemplate {
 
     var $global_callback_values = array();
 
-    var $user_template_variables = array('USER_LOGIN','USER_NICENAME','USER_EMAIL','DISPLAY_NAME','USER_FIRSTNAME','USER_LASTNAME','NICKNAME');
+    var $user_template_variables = array();
     var $user_template_values = array();
 
-    var $post_template_variables = array('POST_AUTHOR','POST_DATE','POST_CONTENT','POST_TITLE','POST_EXCERPT');
+    var $post_template_variables = array();
     var $post_template_values = array();
     var $cat_sub = '';
 
@@ -35,7 +35,10 @@ class CategorySubscriptionsTemplate {
     }
 
     public function create_post_replacements(&$post){
+        // Reset to the empty state.
+        $this->post_template_variables = array('POST_AUTHOR','POST_DATE','POST_CONTENT','POST_TITLE','POST_EXCERPT');
         $this->post_template_values = array();
+
         foreach($this->post_template_variables as $opt){
             array_push($this->post_template_values, $post->{strtolower($opt)});
         }
@@ -54,9 +57,41 @@ class CategorySubscriptionsTemplate {
         }
         array_push($this->post_template_values, implode(', ', $cat_names));
         array_push($this->post_template_values, implode(', ', $cat_urls));
+
+        $excerpt = $post->post_excerpt;
+        if(strlen($excerpt) == 0){
+            $excerpt = wp_trim_excerpt(strip_tags($post->{'post_content'}));
+        }
+        array_push($this->post_template_variables,'EXCERPT');
+        array_push($this->post_template_values, $excerpt);
+        
+        $author = get_userdata($post->post_author);
+        array_push($this->post_template_variables,'AUTHOR_LOGIN');
+        array_push($this->post_template_values, $author->user_login);
+
+        array_push($this->post_template_variables,'AUTHOR_NICKNAME');
+        array_push($this->post_template_values, $author->nickname);
+
+        array_push($this->post_template_variables, 'AUTHOR');
+        array_push($this->post_template_values, $author->display_name);
+
+        array_push($this->post_template_variables, 'AUTHOR_URL');
+        array_push($this->post_template_values, $author->user_url);
+
+        array_push($this->post_template_variables, 'AUTHOR_FIRST_NAME');
+        array_push($this->post_template_values, $author->first_name);
+
+        array_push($this->post_template_variables, 'AUTHOR_LAST_NAME');
+        array_push($this->post_template_values, $author->last_name);
+
+        array_push($this->post_template_variables, 'DATE');
+        array_push($this->post_template_values, mysql2date(get_option('date_format'), $post->post_date));
+
     }
 
     public function create_user_replacements(&$user){
+        // Reset to the empty state.
+        $this->user_template_variables = array('USER_LOGIN','USER_NICENAME','USER_EMAIL','DISPLAY_NAME','USER_FIRSTNAME','USER_LASTNAME','NICKNAME');
         $this->user_template_values = array();
         foreach($this->user_template_variables as $opt){
             array_push($this->user_template_values,$user->{strtolower($opt)});
@@ -84,7 +119,8 @@ class CategorySubscriptionsTemplate {
             $content = preg_replace($patterns, $variables, $this->cat_sub->individual_email_html_template);
         } else {
             $content = preg_replace($patterns, $variables, $this->cat_sub->individual_email_text_template);
-        }
+        } 
+
         return array('subject' => $subject, 'content' => $content);
     }
 

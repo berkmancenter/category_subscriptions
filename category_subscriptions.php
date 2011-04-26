@@ -24,20 +24,6 @@ require_once('includes/category_subscriptions_template.php');
 
 $cat_sub = new CategorySubscriptions($wpdb);
 
-$tmpl = new CategorySubscriptionsTemplate($cat_sub);
-
-$message = $wpdb->get_row("select * from $cat_sub->message_queue_table_name LIMIT 1");
-
-$content = $tmpl->fill_individual_message($message);
-
-error_log('Message!: ' . print_r($content,true));
-
-$send  = new CategorySubscriptionsMessage($message,$cat_sub,$content);
-
-$send->deliver();
-
-
-
 // Cron functions
 add_action( 'my_cat_sub_send_individual_messages', array($cat_sub, 'send_individual_messages_for') );
 add_action( 'my_cat_sub_send_daily_messages', array($cat_sub, 'send_daily_messages') );

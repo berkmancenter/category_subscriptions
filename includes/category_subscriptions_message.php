@@ -17,33 +17,36 @@ class CategorySubscriptionsMessage {
 
     public function deliver(){
         $user = get_userdata($this->message->user_ID);
-
         $to = $user->user_email;
         $subject = $this->formatted_msg['subject'];
-        $content = $this->formatted_msg['content'];
-        $headers = array();
 
-        if(get_user_meta($user->ID, 'cat_sub_delivery_format_pref',true) == 'html')){
-            // HTML
-            $headers = array(
-                "From: " . (($cat_sub->from_address == '') ? get_bloginfo('admin_email') : $cat_sub->from_address ),
-                "Reply-To: " . (($cat_sub->reply_to_address == '') ? get_bloginfo('admin_email') : $cat_sub->reply_to_address ),
-                "Content-Type: multipart/alternative; boundary=bcaec548a17f9ae98304a1c2c386"
-            );
-        } else {
-            // Text
-            $headers = array(
-                "From: " . (($cat_sub->from_address == '') ? get_bloginfo('admin_email') : $cat_sub->from_address ),
-                "Reply-To: " . (($cat_sub->reply_to_address == '') ? get_bloginfo('admin_email') : $cat_sub->reply_to_address ),
-                "Content-Type: text/plain; charset=" . get_bloginfo('charset')
-            );
+        $headers = array(
+            'From: ' . (($this->cat_sub->from_address == '') ? get_bloginfo('admin_email') : $this->cat_sub->from_address ),
+            'Reply-To: ' . (($this->cat_sub->reply_to_address == '') ? get_bloginfo('admin_email') : $this->cat_sub->reply_to_address ),
+        );
+
+        if(strlen($this->cat_sub->bcc_address) > 5){
+            array_push($headers, $this->cat_sub->bcc_address);
         }
 
-//        $h = implode("\n",$headers) . "\n";
+        $content = $this->formatted_msg['content'];
+        if(get_user_meta($user->ID, 'cat_sub_delivery_format_pref',true) == 'html'){
+            // HTML
+            add_filter('wp_mail_content_type',create_function('', 'return "text/html"; '));
+        } else {
+            // Text
+            add_filter('wp_mail_content_type',create_function('', 'return "text/plain"; '));
+        }
 
-        wp_mail($to, $sub, $msg, $h);
-        
+        $headers_for_email = implode("\n",$headers) . "\n";
 
+        error_log('attempting to send message. . . ');
+        error_log('To: ' . $to);
+        error_log('Subject: ' . $subject);
+        error_log('Content: ' . $content);
+        error_log('Headers: ' . print_r($headers_for_email,true));
+
+        wp_mail($to, $subject, $content, $headers_for_email);
     }
 
 }

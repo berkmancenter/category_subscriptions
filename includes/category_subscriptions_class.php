@@ -13,6 +13,7 @@ class CategorySubscriptions {
 
     var $from_address = '';
     var $reply_to_address = '';
+    var $bcc_address = '';
 
     var $daily_email_subject = 'Daily Digest for [DAY], [CATEGORY] - [SITE_TITLE]';
     var $daily_email_html_template = '';
@@ -24,10 +25,10 @@ class CategorySubscriptions {
     var $weekly_email_text_template = '';
     var $weekly_email_type = '';
 
-    var $individual_email_subject = '[SUBJECT], [CATEGORIES] - [SITE_TITLE]';
+    var $individual_email_subject = '[POST_TITLE], [CATEGORIES] - [SITE_TITLE]';
 
     var $individual_email_html_template = '<p>Dear [USER_LOGIN],</p>
-        <p>A new post has been added to one of your subscriptions at <a href="[URL]">[NAME]</a>.</p>
+        <p>A new post has been added to one of your subscriptions at <a href="[SITE_URL]">[SITE_TITLE]</a>.</p>
         <hr />
         <h2>[POST_TITLE] - [CATEGORIES]</h2>
         <h3>by [AUTHOR] on [DATE]</h3>
@@ -36,7 +37,7 @@ class CategorySubscriptions {
         <hr />
         <p>You can manage your subscriptions <a href="[PROFILE_URL]">here</a>.</p>';
 
-    var $individual_email_text_template = 'Dear [FIRST_NAME],
+    var $individual_email_text_template = 'Dear [USER_LOGIN],
 
 A new post has been added to one of your subscriptions at:
 [SITE_TITLE]
@@ -66,6 +67,7 @@ You can manage your subscriptions here:
         'send_weekly_email_on',
         'from_address',
         'reply_to_address',
+        'bcc_address',
 
         'daily_email_subject',
         'daily_email_html_template',
@@ -196,8 +198,8 @@ You can manage your subscriptions here:
 
         $already_getting = $this->wpdb->get_results($this->wpdb->prepare("select user_ID from $this->message_queue_table_name where post_ID = %d and message_type = 'individual'",array($post->ID)), OBJECT_K);
 
-        error_log('Subscribers: ' . print_r($subscribers,true) ); 
-        error_log('Already getting: ' . print_r($already_getting,true) ); 
+//        error_log('Subscribers: ' . print_r($subscribers,true) ); 
+//        error_log('Already getting: ' . print_r($already_getting,true) ); 
 
         if($subscribers){
             // There are subscribers to this message.
@@ -209,7 +211,7 @@ You can manage your subscriptions here:
             }
             $next_scheduled = wp_next_scheduled('my_cat_sub_send_individual_messages',array($post->ID));
 
-            error_log('Next scheduled value for:' . print_r($next_scheduled,true));
+            //error_log('Next scheduled value for:' . print_r($next_scheduled,true));
 
             if( $next_scheduled == 0 ){
                 // Not currently scheduled.
@@ -282,9 +284,16 @@ You can manage your subscriptions here:
             // Get the user object and fill template variables based on the user's preference.
             // We need to fill the template variables dynamically for every string.
             $message_content = $tmpl->fill_individual_message($message);
-            
-           error_log('Message content is: ' . $message_content); 
-
+            // Haw haw.
+            $stand_and  = new CategorySubscriptionsMessage($message,$this,$message_content);
+            $stand_and->deliver();
+            // update table to ensure it's not sent again.
+            $this->wpdb->update($this->message_queue_table_name, 
+                array('subject' => $message_content['subject'], 'message' => $message_content['content'], 'to_send' => 0, 'message_sent' => 1),
+                array('id' => $message->id),
+                array('%s','%s','%d','%d'),
+                array('%d')
+            );
         }
 
         $message_count = $this->wpdb->get_var($this->wpdb->prepare("SELECT count(*) from $this->message_queue_table_name WHERE post_ID = %d AND message_type = 'individual' AND to_send = true", array($post_ID)));
@@ -466,12 +475,20 @@ You can manage your subscriptions here:
         <th><label for="cat_sub_from_address"><?php _e('From address for messages'); ?></label></th>
         <td><input type="text" id="cat_sub_from_address" name="cat_sub_from_address" value="<?php echo esc_attr($this->from_address); ?>" size="70" /><br/>
         <span class="description"><?php _e('Defaults to your "Admin Email" setting'); ?></span>
+        </td>
     </tr>
-    <tr>
         <th><label for="cat_sub_reply_to_address"><?php _e('Reply to address for messages'); ?></label></th>
         <td><input type="text" id="cat_sub_reply_to_address" name="cat_sub_reply_to_address" value="<?php echo esc_attr($this->reply_to_address); ?>" size="70" /><br/>
         <span class="description"><?php _e('Defaults to your "Admin Email" setting'); ?></span>
+        </td>
     </tr>
+    <tr>
+        <th><label for="cat_sub_bcc_address"><?php _e('BCC all messages to'); ?></label></th>
+        <td><input type="text" id="cat_sub_bcc_address" name="cat_sub_bcc_address" value="<?php echo esc_attr($this->bcc_address); ?>" size="70" /><br/>
+        <span class="description"><?php _e('BCC all messages to this address - useful for debugging.'); ?></span>
+        </td>
+    </tr>
+    <tr>
     </table>
 
     <h3><?php _e('Email Templates'); ?></h3>
