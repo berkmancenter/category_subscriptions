@@ -24,6 +24,8 @@ require_once('includes/category_subscriptions_template.php');
 
 $cat_sub = new CategorySubscriptions($wpdb);
 
+$cat_sub->send_daily_messages();
+
 // Cron functions
 add_action( 'my_cat_sub_send_individual_messages', array($cat_sub, 'send_individual_messages_for') );
 add_action( 'my_cat_sub_send_daily_messages', array($cat_sub, 'send_daily_messages') );

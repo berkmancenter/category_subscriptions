@@ -15,44 +15,17 @@ class CategorySubscriptions {
     var $reply_to_address = '';
     var $bcc_address = '';
 
-    var $daily_email_subject = 'Daily Digest for [DAY], [CATEGORY] - [SITE_TITLE]';
+    var $daily_email_subject = '';
     var $daily_email_html_template = '';
     var $daily_email_text_template = '';
 
-    var $weekly_email_subject = 'Weekly Digest for [WEEK], [CATEGORY] - [SITE_TITLE]';
+    var $weekly_email_subject = '';
     var $weekly_email_html_template = '';
     var $weekly_email_text_template = '';
 
-    var $individual_email_subject = '[POST_TITLE], [CATEGORIES] - [SITE_TITLE]';
-
-    var $individual_email_html_template = '<p>Dear [USER_LOGIN],</p>
-        <p>A new post has been added to one of your subscriptions at <a href="[SITE_URL]">[SITE_TITLE]</a>.</p>
-        <hr />
-        <h2>[POST_TITLE] - [CATEGORIES]</h2>
-        <h3>by [AUTHOR] on [DATE]</h3>
-        [POST_CONTENT]
-
-        <hr />
-        <p>You can manage your subscriptions <a href="[PROFILE_URL]">here</a>.</p>';
-
-    var $individual_email_text_template = 'Dear [USER_LOGIN],
-
-A new post has been added to one of your subscriptions at:
-[SITE_TITLE]
-
-_____________________________________________________________
-
-[POST_TITLE] - [CATEGORIES]
-
-by [AUTHOR] on [DATE]
-
-[POST_CONTENT]
-
-_____________________________________________________________
-
-You can manage your subscriptions here:
-[PROFILE_URL]
-';
+    var $individual_email_subject = '';
+    var $individual_email_html_template = '';
+    var $individual_email_text_template = '';
 
     var $email_row_html_template = '';
     var $email_row_text_template = '';
@@ -97,6 +70,8 @@ You can manage your subscriptions here:
             $this->category_subscriptions_install();
         }
 
+        $this->initialize_templates();
+
         foreach($this->editable_options as $opt){
             if(get_option('cat_sub_' . $opt)){
                 $this->{$opt} = get_option('cat_sub_' . $opt);
@@ -131,15 +106,15 @@ You can manage your subscriptions here:
             user_ID bigint(20) UNSIGNED,
             post_ID bigint(20) UNSIGNED,
             subject varchar(250),
-            message varchar(10000),
+            message varchar(100000),
             to_send boolean DEFAULT TRUE,
             message_sent boolean DEFAULT FALSE,
-            deliver_at datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
+            delivered_at datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
             UNIQUE KEY id (id),
             KEY user_ID (user_ID),
             KEY post_ID (post_ID),
             KEY to_send (to_send),
-            KEY deliver_at (deliver_at)
+            KEY delivered_at (deliver_at)
         ) DEFAULT CHARSET=utf8";
     
         dbDelta($sql);
@@ -245,38 +220,88 @@ You can manage your subscriptions here:
 
     }
 
-    public function send_daily_messages() {
-        // So - Find all daily subscriptions. Uniquify based on the user_id, as it'd be
-        // stupid to send out one email per subscription.
-        // For each user we'll send out one message with all their subscriptions.
-        // spawn a cron run to deliver the messages after creating them.
-
-        $frequency = 'daily';
-        $last_run = get_option('last_' . $frequency .'_message_run');
-        
-        //get users with daily subscriptions.
-
-        $user_subscriptions = $this->wpdb->get_results("select user_ID,group_concat(category_ID) as category_IDs from $this->user_subscriptions_table_name where delivery_time_preference = %s group by user_ID",array($frequency));
-
-        foreach($user_subscriptions as $usub){
-            $cats = explode(',',$usub->category_IDs);
-            // So get messages greater than $last_run in these categories that have a post_status of "publish".
-            // It probably makes sense to pipe this through WP_Query to ensure rules get applied.
-            // TODO
-
-
-
-        }
-        update_option('last_' . $frequency . '_message_run', );
-
+    public function send_daily_messages(){
+        $this->send_periodic_messages('daily');
     }
 
     public function send_weekly_messages() {
         if(date('w') == $this->send_weekly_email_on){
             // Tonight's the night!
-
+            $this->send_periodic_messages('weekly');
         }
     }
+
+    public function send_periodic_messages($frequency = 'daily') {
+        // So - Find all daily subscriptions. Uniquify based on the user_id, as it'd be
+        // stupid to send out one email per subscription.
+        // For each user we'll send out one message with all their subscriptions.
+        // spawn a cron run to deliver the messages after creating them.
+
+        $user_subscriptions = $this->wpdb->get_results($this->wpdb->prepare("select user_ID,group_concat(category_ID) as category_IDs from $this->user_subscriptions_table_name where delivery_time_preference = %s group by user_ID",array($frequency)));
+
+        $tmpl = new CategorySubscriptionsTemplate($this);
+
+        function cat_sub_filter_where_daily( $where = '' ) {
+            $last_run = get_option('cat_sub_last_daily_message_run');
+            $where .= " AND post_date >= '$last_run'";
+            return $where;
+        }
+        function cat_sub_filter_where_weekly( $where = '' ) {
+            $last_run = get_option('cat_sub_last_weekly_message_run');
+            $where .= " AND post_date >= '$last_run'";
+            return $where;
+        }
+
+        if($frequency == 'daily'){
+            add_filter( 'posts_where', 'cat_sub_filter_where_daily' );
+        } else {
+            add_filter( 'posts_where', 'cat_sub_filter_where_weekly' );
+        }
+
+        foreach($user_subscriptions as $usub){
+            // So get messages greater than $last_run in these categories that have a post_status of "publish".
+            $query = new WP_Query(
+                array(
+                    'cat' => $usub->category_IDs,
+                    'post_type' => 'post',
+                    'post_status' => 'publish'
+                )
+            );
+            $message_list = '';
+            foreach($query->posts as $post){
+                $message_content = $tmpl->fill_individual_message($usub->user_ID, $post->ID,true);
+                $message_list .= $message_content['content'];
+                error_log('Daily post info: ' . print_r($post,true));
+            }
+
+            if(strlen($message_list) > 0){
+                $digested_message = $tmpl->fill_digested_message($usub->user_ID, $message_list, $frequency);
+                error_log('Digested message: '. print_r($digested_message,true));
+
+//                $sender = new CategorySubscriptionsMessage($usub->user_ID,$this,$digested_message);
+//                $sender->deliver();
+
+                $this->wpdb->insert($this->message_queue_table_name, 
+                    array('user_ID' => $user_ID, 'message_type' => $frequency, 'subject' => $digested_message['subject'], 'message' => $digested_message['content']), 
+                    array('%d','%s','%s','%s')
+                );
+                // TODO - cron sub-scheduling for message delivery.
+
+            }
+            
+            wp_reset_postdata();
+        }
+
+        if($frequency == 'daily'){
+            remove_filter( 'posts_where', 'cat_sub_filter_where_daily' );
+        } else {
+            remove_filter( 'posts_where', 'cat_sub_filter_where_weekly' );
+        }
+
+        $this_run_time = date('Y-m-d H:i:s');
+        update_option('cat_sub_last_' . $frequency . '_message_run', $this_run_time);
+    }
+
 
     /*
      * Get the messages to send up to the max_batch size. Template them and deliver, rescheduling if there are still more
@@ -295,11 +320,10 @@ You can manage your subscriptions here:
         foreach($to_send as $message){
             // Get the user object and fill template variables based on the user's preference.
             // We need to fill the template variables dynamically for every string.
-            $message_content = $tmpl->fill_individual_message($message);
+            $message_content = $tmpl->fill_individual_message($message->user_ID, $message->post_ID);
 
-            // Haw haw.
-            $stand_and  = new CategorySubscriptionsMessage($message,$this,$message_content);
-            $stand_and->deliver();
+            $sender = new CategorySubscriptionsMessage($message->user_ID,$this,$message_content);
+            $sender->deliver();
 
             // update table to ensure it's not sent again.
             $this->wpdb->update($this->message_queue_table_name, 
@@ -374,8 +398,6 @@ You can manage your subscriptions here:
     $sql = $this->wpdb->prepare("SELECT category_ID, delivery_time_preference from $this->user_subscriptions_table_name where user_ID = %d", array($user->ID));
     $subscriptions = $this->wpdb->get_results($sql, OBJECT_K);
 
-    //error_log(print_r($subscriptions,true));
-    // TODO - Fix persistence below.
 ?>
         <table class="wp-list-table widefat fixed" style="width: 50%; margin-top: 1em;">
           <thead>
@@ -409,12 +431,13 @@ You can manage your subscriptions here:
     echo '</tbody></table>';
 }
 
-    public function admin_menu (){
-        wp_enqueue_style('admin.css');
-        wp_enqueue_script('jquery.cookie.js');
-        wp_enqueue_script('admin.js');
-        add_submenu_page('options-general.php', __('Category Subscriptions Configuration'), __('Category Subscriptions'), 'manage_options', 'category-subscriptions-config', array($this,'config'));
-    }
+public function admin_menu (){
+    wp_enqueue_style('admin.css');
+    wp_enqueue_script('jquery.cookie.js');
+    wp_enqueue_script('admin.js');
+    add_submenu_page('options-general.php', __('Category Subscriptions Configuration'), __('Category Subscriptions'), 'manage_options', 'category-subscriptions-config', array($this,'config'));
+
+}
 
     public function config(){
         $updated = false;
@@ -497,7 +520,7 @@ You can manage your subscriptions here:
     <h3><?php _e('Email Templates'); ?></h3>
     <ul>
         <li><?php _e('All email templates - daily, weekly, individual - share the same tags. So, for example, you can put [FIRST_NAME] in the subject line or body of any email template and it\'ll work the same.'); ?></li>
-        <li><?php _e('An "email row template" defines the template used in digest emails to display the list of messages. Each individual message has this template applied to it, and is then put in the [EMAILLIST] template tag for your daily or weekly digest.'); ?></li>
+        <li><?php _e('An "email row template" defines the template used in digest emails to display the list of messages. Each individual message has this template applied to it, and is then put in the [EMAIL_LIST] template tag for your daily or weekly digest.'); ?></li>
         <li><?php _e('You should be sure both the HTML and plain text templates are kept up to date, as your subscribers have the ability to choose the format themselves.') ?></li>
     </ul>
 
@@ -523,6 +546,88 @@ You can manage your subscriptions here:
   </form>
 </div> 
 <?php
+
+    }
+
+    function initialize_templates(){
+    // Set default templates.
+
+    $this->daily_email_subject = 'Daily summary for [DATE], [SITE_TITLE]';
+    $this->daily_email_html_template = '<h3>A daily email summary for your subscriptions at "<a href="[SITE_URL]">[SITE_TITLE]</a>"</h3>
+<div>
+[EMAIL_LIST]
+</div>
+
+<hr />
+<p>You can manage your subscriptions <a href="[PROFILE_URL]">here</a>.</p>
+';
+
+    $this->daily_email_text_template = 'A daily email summary for your subscriptions at "[SITE_TITLE]"
+
+[EMAIL_LIST]
+
+You can manage your subscriptions at the link below:
+[PROFILE_URL]
+';
+
+    $this->weekly_email_subject = 'Weekly summary for [DATE], [SITE_TITLE]';
+    $this->weekly_email_html_template = '<h3>A weekly email summary for your subscriptions at "<a href="[SITE_URL]">[SITE_TITLE]</a>"</h3>
+<div>
+[EMAIL_LIST]
+</div>
+
+<hr />
+<p>You can manage your subscriptions <a href="[PROFILE_URL]">here</a>.</p>';
+
+    $this->weekly_email_text_template = 'A weekly email summary for your subscriptions at "[SITE_TITLE]"
+
+[EMAIL_LIST]
+
+You can manage your subscriptions at the link below:
+[PROFILE_URL]';
+
+    $this->individual_email_subject = '[POST_TITLE], [CATEGORIES] - [SITE_TITLE]';
+
+    $this->individual_email_html_template = '<p>Dear [USER_LOGIN],</p>
+        <p>A new post has been added to one of your subscriptions at <a href="[SITE_URL]">[SITE_TITLE]</a>.</p>
+        <hr />
+        <h2>[POST_TITLE] - [CATEGORIES_WITH_URLS]</h2>
+        <h3>by [AUTHOR] on [FORMATTED_POST_DATE]</h3>
+        [POST_CONTENT]
+
+        <hr />
+        <p>You can manage your subscriptions <a href="[PROFILE_URL]">here</a>.</p>';
+
+    $this->individual_email_text_template = 'Dear [USER_LOGIN],
+
+A new post has been added to one of your subscriptions at [SITE_TITLE].
+
+______________________________________
+[POST_TITLE] - [GUID]
+by [AUTHOR] on [FORMATTED_POST_DATE] in [CATEGORIES]
+
+[POST_CONTENT]
+
+______________________________________
+
+You can manage your subscriptions at the link below:
+[PROFILE_URL]';
+
+    $this->email_row_html_template = '<h2><a href="[GUID]">[POST_TITLE]</a></h2>
+<p><strong>by</strong> [AUTHOR] on [FORMATTED_POST_DATE]</p>
+<p><strong>in</strong> [CATEGORIES_WITH_URLS]</p>
+<div>
+[EXCERPT]
+</div>
+<hr />';
+
+    $this->email_row_text_template = '[POST_TITLE] - [GUID]
+by [AUTHOR] on [FORMATTED_POST_DATE] in [CATEGORIES]
+
+[EXCERPT]
+_____________________________________________
+';
+
 
     }
 

@@ -1,22 +1,22 @@
 <?php
 class CategorySubscriptionsMessage {
-    var $message = '';
+    var $user_ID = '';
     var $cat_sub = '';
-    var $message_type = 'individual';
+    var $formatted_msg = '';
     
-    public function __construct(&$message,&$cat_sub,&$formatted_msg){
-        $this->message = $message;
+    public function __construct(&$user_ID,&$cat_sub,&$formatted_msg){
+        $this->user_ID = $user_ID;
         $this->cat_sub = $cat_sub;
         $this->formatted_msg = $formatted_msg;
     }
     
     # PHP 4 constructor
-    public function CategorySubscriptionsMessage(&$message,&$cat_sub,&$formatted_msg) {
-        return $this->__construct($message,$cat_sub,$formatted_msg);
+    public function CategorySubscriptionsMessage(&$user_ID,&$cat_sub,&$formatted_msg) {
+        return $this->__construct($user_ID,$cat_sub,$formatted_msg);
     }
 
     public function deliver(){
-        $user = get_userdata($this->message->user_ID);
+        $user = get_userdata($this->user_ID);
         $to = $user->user_email;
         $subject = $this->formatted_msg['subject'];
 
@@ -26,7 +26,7 @@ class CategorySubscriptionsMessage {
         );
 
         if(strlen($this->cat_sub->bcc_address) > 5){
-            array_push($headers, $this->cat_sub->bcc_address);
+            array_push($headers, 'Bcc: ' . $this->cat_sub->bcc_address);
         }
 
         $content = $this->formatted_msg['content'];

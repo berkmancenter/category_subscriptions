@@ -21,6 +21,7 @@ class CategorySubscriptionsTemplate {
             'DESCRIPTION' => create_function( '', 'return get_bloginfo("description");'),
             'SITE_URL' => create_function( '', 'return get_bloginfo("url");' ),
             'ADMIN_EMAIL' => create_function('', 'return get_bloginfo("admin_email");' ),
+            'DATE' => create_function('', 'return date(get_option("date_format"));'),
             'STYLESHEET_DIRECTORY' => create_function( '', 'return get_bloginfo("stylesheet_directory");' )
         );
 
@@ -36,7 +37,7 @@ class CategorySubscriptionsTemplate {
 
     public function create_post_replacements(&$post){
         // Reset to the empty state.
-        $this->post_template_variables = array('POST_AUTHOR','POST_DATE','POST_CONTENT','POST_TITLE','POST_EXCERPT');
+        $this->post_template_variables = array('POST_AUTHOR','POST_DATE','POST_CONTENT','POST_TITLE','POST_EXCERPT','GUID');
         $this->post_template_values = array();
 
         foreach($this->post_template_variables as $opt){
@@ -84,7 +85,7 @@ class CategorySubscriptionsTemplate {
         array_push($this->post_template_variables, 'AUTHOR_LAST_NAME');
         array_push($this->post_template_values, $author->last_name);
 
-        array_push($this->post_template_variables, 'DATE');
+        array_push($this->post_template_variables, 'FORMATTED_POST_DATE');
         array_push($this->post_template_values, mysql2date(get_option('date_format'), $post->post_date));
 
     }
@@ -98,9 +99,9 @@ class CategorySubscriptionsTemplate {
         }
     }
 
-    public function fill_individual_message(&$message){
-        $user = get_userdata($message->user_ID);
-        $post = get_post($message->post_ID);
+    public function fill_individual_message(&$user_ID,&$post_ID,$in_digest = false){
+        $user = get_userdata($user_ID);
+        $post = get_post($post_ID);
         $this->create_user_replacements($user);
         $this->create_post_replacements($post);
 
@@ -112,20 +113,39 @@ class CategorySubscriptionsTemplate {
         }
         $variables = array_merge($this->global_callback_values, $this->user_template_values, $this->post_template_values);
 
-
         $subject = preg_replace($patterns, $variables, $this->cat_sub->individual_email_subject);
         $content = '';
-        if(get_user_meta($message->user_ID, 'cat_sub_delivery_format_pref',true) == 'html'){
-            $content = preg_replace($patterns, $variables, $this->cat_sub->individual_email_html_template);
+        if(get_user_meta($user_ID, 'cat_sub_delivery_format_pref',true) == 'html'){
+            $content = preg_replace($patterns, $variables, (($in_digest) ? $this->cat_sub->email_row_html_template : $this->cat_sub->individual_email_html_template));
         } else {
-            $content = preg_replace($patterns, $variables, $this->cat_sub->individual_email_text_template);
+            $content = preg_replace($patterns, $variables, (($in_digest) ? $this->cat_sub->email_row_text_template : $this->cat_sub->individual_email_text_template));
         } 
 
         return array('subject' => $subject, 'content' => $content);
     }
 
-    public function fill_digested_message(&$main_message,&$messages){
+    public function fill_digested_message(&$user_ID,&$message_list,$frequency = 'daily'){
+        $user = get_userdata($user_ID);
+        $this->create_user_replacements($user);
 
+        $patterns = array();
+
+        $patterns_tmp = array_merge($this->global_callback_variables, $this->user_template_variables);
+        foreach($patterns_tmp as $pat){
+            array_push($patterns, '/\[' . $pat . '\]/');
+        }
+        $variables = array_merge($this->global_callback_values, $this->user_template_values);
+
+        $subject = preg_replace($patterns, $variables, (($frequency == 'daily') ? $this->cat_sub->daily_email_subject : $this->cat_sub->weekly_email_subject));
+        $content = '';
+
+        if(get_user_meta($user_ID, 'cat_sub_delivery_format_pref',true) == 'html'){
+            $content = preg_replace($patterns, $variables, (($frequency == 'daily') ? $this->cat_sub->daily_email_html_template : $this->cat_sub->weekly_email_html_template));
+        } else {
+            $content = preg_replace($patterns, $variables, (($frequency == 'daily') ? $this->cat_sub->daily_email_text_template : $this->cat_sub->weekly_email_text_template));
+        }
+        $content = preg_replace('/\[EMAIL_LIST\]/', $message_list, $content);
+        return array('subject' => $subject, 'content' => $content);
     }
 
 }
