@@ -236,11 +236,9 @@ You can manage your subscriptions here:
             $this->create_individual_messages($post);
         } else {
             // We could be a little more precise in how we target removing messages to send
-            // and possibly avoid a few queries, but if a revision post_type gets scheduled 
+            // and possibly avoid a few queries, but if a non-published post_type gets scheduled 
             // to be emailed that would be a pretty big problem.
-            // error_log('Unpublished post info:' . print_r($post,true));
-            // Not published. Delete unsent messages.
-            //
+            
             $this->wpdb->query($this->wpdb->prepare("DELETE from $this->message_queue_table_name where post_ID = %d and message_type = 'individual' and to_send is true", array($post_ID)));
             wp_unschedule_event('my_cat_sub_send_individual_messages',array($post->ID));
         }
@@ -248,7 +246,29 @@ You can manage your subscriptions here:
     }
 
     public function send_daily_messages() {
-        // TODO
+        // So - Find all daily subscriptions. Uniquify based on the user_id, as it'd be
+        // stupid to send out one email per subscription.
+        // For each user we'll send out one message with all their subscriptions.
+        // spawn a cron run to deliver the messages after creating them.
+
+        $frequency = 'daily';
+        $last_run = get_option('last_' . $frequency .'_message_run');
+        
+        //get users with daily subscriptions.
+
+        $user_subscriptions = $this->wpdb->get_results("select user_ID,group_concat(category_ID) as category_IDs from $this->user_subscriptions_table_name where delivery_time_preference = %s group by user_ID",array($frequency));
+
+        foreach($user_subscriptions as $usub){
+            $cats = explode(',',$usub->category_IDs);
+            // So get messages greater than $last_run in these categories that have a post_status of "publish".
+            // It probably makes sense to pipe this through WP_Query to ensure rules get applied.
+            // TODO
+
+
+
+        }
+        update_option('last_' . $frequency . '_message_run', );
+
     }
 
     public function send_weekly_messages() {
@@ -276,9 +296,11 @@ You can manage your subscriptions here:
             // Get the user object and fill template variables based on the user's preference.
             // We need to fill the template variables dynamically for every string.
             $message_content = $tmpl->fill_individual_message($message);
+
             // Haw haw.
             $stand_and  = new CategorySubscriptionsMessage($message,$this,$message_content);
             $stand_and->deliver();
+
             // update table to ensure it's not sent again.
             $this->wpdb->update($this->message_queue_table_name, 
                 array('subject' => $message_content['subject'], 'message' => $message_content['content'], 'to_send' => 0, 'message_sent' => 1),

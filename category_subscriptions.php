@@ -41,6 +41,9 @@ add_action( 'profile_personal_options', array( $cat_sub, 'show_profile_fields' )
 add_action( 'personal_options_update', array( $cat_sub, 'update_profile_fields' ) );
 add_action( 'edit_user_profile_update', array( $cat_sub, 'update_profile_fields' ) );
 
+// TODO:
+// Add hook to clear out subscriptions after a user is deactivated / deleted / spammed, etc.
+
 // Instantiate messages on post publish
 add_action( 'save_post', array( $cat_sub, 'instantiate_messages' ) );
 
