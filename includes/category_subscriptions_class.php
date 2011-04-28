@@ -295,23 +295,23 @@ class CategorySubscriptions {
             );
             $message_list = '';
             foreach($query->posts as $post){
-#                $message_content = $tmpl->fill_individual_message($usub->user_ID, $post->ID,true);
-#                $message_list .= $message_content['content'];
+                $message_content = $tmpl->fill_individual_message($usub->user_ID, $post->ID,true);
+                $message_list .= $message_content['content'];
                 error_log('Daily post info: ' . print_r($post,true));
             }
 
             if(strlen($message_list) > 0){
+                // There are messages to send for this user.
                 $digested_message = $tmpl->fill_digested_message($usub->user_ID, $message_list, $frequency);
                 error_log('Digested message: '. print_r($digested_message,true));
 
-//                $sender = new CategorySubscriptionsMessage($usub->user_ID,$this,$digested_message);
-//                $sender->deliver();
+                $sender = new CategorySubscriptionsMessage($usub->user_ID,$this,$digested_message);
+                $sender->deliver();
 
                 $this->wpdb->insert($this->message_queue_table_name, 
                     array('user_ID' => $usub->user_ID, 'message_type' => $frequency, 'subject' => $digested_message['subject'], 'message' => $digested_message['content']), 
                     array('%d','%s','%s','%s')
                 );
-                // TODO - cron sub-scheduling for message delivery.
                 wp_schedule_single_event(time() + 60, 'my_cat_sub_send_digested_messages', array($frequency,rand()));
             }
             wp_reset_postdata();
