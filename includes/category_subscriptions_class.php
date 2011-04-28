@@ -120,14 +120,14 @@ class CategorySubscriptions {
         dbDelta($sql);
 
         update_option("category_subscription_version", $this->category_subscription_version);
-        wp_schedule_event(time(), 'daily', 'my_cat_sub_send_daily_messages');
-        wp_schedule_event(time(), 'daily', 'my_cat_sub_send_weekly_messages');
+        wp_schedule_event(time(), 'daily', 'my_cat_sub_prepare_daily_messages');
+        wp_schedule_event(time(), 'daily', 'my_cat_sub_prepare_weekly_messages');
 
     }
 
     public function category_subscriptions_deactivate(){
-        wp_clear_scheduled_hook('my_cat_sub_send_daily_messages');
-        wp_clear_scheduled_hook('my_cat_sub_send_weekly_messages');
+        wp_clear_scheduled_hook('my_cat_sub_prepare_daily_messages');
+        wp_clear_scheduled_hook('my_cat_sub_prepare_weekly_messages');
     } 
 
     public function update_profile_fields ( $user_ID ){
@@ -217,25 +217,51 @@ class CategorySubscriptions {
             $this->wpdb->query($this->wpdb->prepare("DELETE from $this->message_queue_table_name where post_ID = %d and message_type = 'individual' and to_send is true", array($post_ID)));
             wp_unschedule_event('my_cat_sub_send_individual_messages',array($post->ID));
         }
-
     }
 
-    public function send_daily_messages(){
-        $this->send_periodic_messages('daily');
+    public function prepare_daily_messages(){
+        $this->prepare_digested_messages('daily');
     }
 
-    public function send_weekly_messages() {
+    public function prepare_weekly_messages() {
         if(date('w') == $this->send_weekly_email_on){
             // Tonight's the night!
-            $this->send_periodic_messages('weekly');
+            $this->prepare_digested_messages('weekly');
         }
     }
 
-    public function send_periodic_messages($frequency = 'daily') {
+    public function send_digested_messages($frequency = 'daily', $nothing_to_see_here){
+        // This function picks up and sends the messages that've been prepared by the "prepare_TIMEPERIOD_messages" functions.
+        $to_send = $this->wpdb->get_results( $this->wpdb->prepare("SELECT * FROM $this->message_queue_table_name WHERE post_ID = %d AND message_type = %s AND to_send = true LIMIT %d", array( $post_ID, $frequency, $this->max_batch )));
+
+        foreach($to_send as $msg){
+            $this->wpdb->update($this->message_queue_table_name, 
+                array('to_send' => 0, 'message_sent' => 1),
+                array('id' => $msg->id),
+                array('%d','%d'),
+                array('%d')
+            );
+            // Do the update before sending the message just to ensure we don't get stuck messages
+            // if the sending errors out.
+            $sender = new CategorySubscriptionsMessage($msg->user_ID,$this,array('subject' => $msg->subject, 'content' => $message->message));
+            $sender->deliver();
+        }
+
+        $message_count = $this->wpdb->get_var($this->wpdb->prepare("SELECT count(*) from $this->message_queue_table_name WHERE post_ID = %d AND message_type = %s AND to_send = true", array($post_ID, $frequency)));
+
+        if($message_count > 0){
+            // more messages to send. Reschedule.
+            wp_schedule_single_event(time() + 60, 'my_cat_sub_send_digested_messages', array($frequency,rand()));
+        }
+    }
+
+    public function prepare_digested_messages($frequency = 'daily') {
         // So - Find all daily subscriptions. Uniquify based on the user_id, as it'd be
         // stupid to send out one email per subscription.
         // For each user we'll send out one message with all their subscriptions.
         // spawn a cron run to deliver the messages after creating them.
+        // Rather than lazily preparing messages like we do for individual messages,
+        // we prepare them all at once for each user so as to capture a point in time more accurately.
 
         $user_subscriptions = $this->wpdb->get_results($this->wpdb->prepare("select user_ID,group_concat(category_ID) as category_IDs from $this->user_subscriptions_table_name where delivery_time_preference = %s group by user_ID",array($frequency)));
 
@@ -259,7 +285,7 @@ class CategorySubscriptions {
         }
 
         foreach($user_subscriptions as $usub){
-            // So get messages greater than $last_run in these categories that have a post_status of "publish".
+            // So get published messages greater than $last_run in these categories that have a post_status of "publish".
             $query = new WP_Query(
                 array(
                     'cat' => $usub->category_IDs,
@@ -269,8 +295,8 @@ class CategorySubscriptions {
             );
             $message_list = '';
             foreach($query->posts as $post){
-                $message_content = $tmpl->fill_individual_message($usub->user_ID, $post->ID,true);
-                $message_list .= $message_content['content'];
+#                $message_content = $tmpl->fill_individual_message($usub->user_ID, $post->ID,true);
+#                $message_list .= $message_content['content'];
                 error_log('Daily post info: ' . print_r($post,true));
             }
 
@@ -282,13 +308,12 @@ class CategorySubscriptions {
 //                $sender->deliver();
 
                 $this->wpdb->insert($this->message_queue_table_name, 
-                    array('user_ID' => $user_ID, 'message_type' => $frequency, 'subject' => $digested_message['subject'], 'message' => $digested_message['content']), 
+                    array('user_ID' => $usub->user_ID, 'message_type' => $frequency, 'subject' => $digested_message['subject'], 'message' => $digested_message['content']), 
                     array('%d','%s','%s','%s')
                 );
                 // TODO - cron sub-scheduling for message delivery.
-
+                wp_schedule_single_event(time() + 60, 'my_cat_sub_send_digested_messages', array($frequency,rand()));
             }
-            
             wp_reset_postdata();
         }
 
@@ -300,17 +325,22 @@ class CategorySubscriptions {
 
         $this_run_time = date('Y-m-d H:i:s');
         update_option('cat_sub_last_' . $frequency . '_message_run', $this_run_time);
+
     }
 
 
     /*
-     * Get the messages to send up to the max_batch size. Template them and deliver, rescheduling if there are still more
+     * Get the individual messages to send up to the max_batch size. Template them and deliver, rescheduling if there are still more
      * to deliver for this post.
      *
      * Invoked via wp-cron.
      *
      */
     public function send_individual_messages_for($post_ID){
+        // So we're "lazy" here, in that we only prepare the messages as we're sending them. We can do this because it's 
+        // a single message and a bit less dependent on capturing a point in time - it's only this message to consider.
+        // So by deferring message preparation we perhaps spread out CPU time a bit.
+
         $post = get_post($post_ID);
     
         $to_send = $this->wpdb->get_results( $this->wpdb->prepare("SELECT * FROM $this->message_queue_table_name WHERE post_ID = %d AND message_type = 'individual' AND to_send = true LIMIT %d", array( $post_ID, $this->max_batch )));
@@ -339,9 +369,6 @@ class CategorySubscriptions {
             // more messages to send. Reschedule.
             wp_schedule_single_event(time() + 60, 'my_cat_sub_send_individual_messages', array($post->ID));
         }
-
-
-
     }
 
     public function trash_messages($post_ID){

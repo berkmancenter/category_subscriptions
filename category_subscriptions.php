@@ -24,12 +24,14 @@ require_once('includes/category_subscriptions_template.php');
 
 $cat_sub = new CategorySubscriptions($wpdb);
 
-$cat_sub->send_daily_messages();
+$cat_sub->prepare_daily_messages();
 
 // Cron functions
 add_action( 'my_cat_sub_send_individual_messages', array($cat_sub, 'send_individual_messages_for') );
-add_action( 'my_cat_sub_send_daily_messages', array($cat_sub, 'send_daily_messages') );
-add_action( 'my_sub_send_weekly_messages', array($cat_sub, 'send_weekly_messages') );
+add_action( 'my_cat_sub_prepare_daily_messages', array($cat_sub, 'prepare_daily_messages') );
+add_action( 'my_cat_sub_prepare_weekly_messages', array($cat_sub, 'prepare_weekly_messages') );
+
+add_action( 'my_cat_sub_send_digested_messages', array($cat_sub, 'send_digested_messages') );
 
 // Activation, de-activation
 register_activation_hook(__FILE__,array( $cat_sub,'category_subscriptions_install' ));
