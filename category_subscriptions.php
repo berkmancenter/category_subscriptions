@@ -22,9 +22,9 @@ require_once('includes/category_subscriptions_class.php');
 require_once('includes/category_subscriptions_message.php');
 require_once('includes/category_subscriptions_template.php');
 
-$cat_sub = new CategorySubscriptions($wpdb);
-
-$cat_sub->prepare_daily_messages();
+// Debugging. . .
+// $cat_sub = new CategorySubscriptions($wpdb);
+// $cat_sub->prepare_daily_messages();
 
 // Cron functions
 add_action( 'my_cat_sub_send_individual_messages', array($cat_sub, 'send_individual_messages_for') );
