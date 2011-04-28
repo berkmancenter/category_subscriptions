@@ -123,6 +123,13 @@ class CategorySubscriptions {
         wp_schedule_event(time(), 'daily', 'my_cat_sub_prepare_daily_messages');
         wp_schedule_event(time(), 'daily', 'my_cat_sub_prepare_weekly_messages');
 
+        // Ensure we're not grabbing all messages from the beginning of time by setting the last_run time to now.
+
+        $install_time = date('Y-m-d H:i:s');
+        update_option('cat_sub_last_daily_message_run', $install_time);
+        update_option('cat_sub_last_weekly_message_run', $install_time);
+        update_option('cat_sub_install_unixtime', time());
+
     }
 
     public function category_subscriptions_deactivate(){
@@ -147,7 +154,12 @@ class CategorySubscriptions {
         // You get here if you are published and don't already have sent messages in the queue.
         //
         // Get the categories for this post, find the users, and then add the rows to the message queue table.
-        // It'd be nice to de-duplicate users because it'd simplify the conditions under instantiate_messages().
+
+        $install_time = get_option('cat_sub_install_unixtime');
+        if(strtotime($post->post_date) <= $install_time){
+            # Don't do anything with posts that existed before this plugin was installed.
+            return;
+        }
 
         function messages_conditions($a){
             // nested functions. Yuck. Here's the perl version of what I'm trying to do here:
@@ -521,7 +533,7 @@ public function admin_menu (){
         <option value="600" <?php echo (($this->send_delay == 600) ? 'selected="selected"' : '') ?>><?php _e('10 minutes'); ?></option>
         <option value="3600" <?php echo (($this->send_delay == 3600) ? 'selected="selected"' : '') ?>><?php _e('1 hour'); ?></option>
         </select>
-        <br/><span class="description"><?php _e('If you unpublish a post before this time limit is reached, the notices will not be sent out. This gives you a handy "undo" time period in case you notice an error right after publishing a post.'); ?></span>
+        <br/><span class="description"><?php _e('If you unpublish a post before this time limit is reached, the notices will not be sent out. This gives you a handy "undo" time period in case you notice an error right after publishing a post. Only valid for messages sent immediately.'); ?></span>
       </td>
     </tr>
     <tr>
