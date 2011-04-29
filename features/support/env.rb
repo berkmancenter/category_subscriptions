@@ -13,7 +13,7 @@ require 'capybara/dsl'
 Capybara.default_selector = :css
 
 Capybara.default_driver = :selenium
-Capybara.app_host = "http://wordpress-dev"
+Capybara.app_host = "http://wordpressdev.org"
 Capybara.register_driver :selenium do |app|
   Capybara::Driver::Selenium.new(app, :browser => :firefox)
 end

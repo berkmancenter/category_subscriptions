@@ -581,6 +581,13 @@ public function admin_menu (){
         </tr>
     </table>
 
+    <h4 class="cat_sub_toggler" id="documentation_toggler"><?php _e('Template Tag Documentation'); ?><span><?php _e('expand. . .'); ?></span></h4>
+    <div id="documentation_target" class="toggler_target">
+      <h2><?php _e('Template Tags') ?></h2>
+    </div>
+    
+
+
   <p class="submit"><input type="submit" name="submit" id="submit" class="button-primary" value="<?php _e('Update Options'); ?>"  /></p> 
   </form>
 </div> 

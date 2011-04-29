@@ -7,7 +7,7 @@ Scenario: Activate the plugin without errors.
     And I click "Activate" within the row with the id "category-subscriptions"
     Then I should see "Plugin activated"
 
-Scenario: Deactive the plugin without errors.
+Scenario: Deactivate the plugin without errors.
     Given a "Activated" plugin in the row with the id "category-subscriptions"
     And a logged in user of type "administrator"
     When I visit "/wp-admin/plugins.php"
@@ -43,9 +43,8 @@ Scenario: Create a post and see that it's scheduled in the backend.
     And I fill in "content" with "Some new content"
     And I wait "3" seconds
     And I ensure the "Categories" post edit page panel is visible
-    And I click "#category-tabs li:first-child a"
-    And I check "Test Category 1"
-    And I check "Test Category 2"
+    And I check "in-category-3"
+    And I check "in-category-4"
     And I press "Publish"
     Then I should see "Post published"
     
