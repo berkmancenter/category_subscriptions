@@ -1,4 +1,5 @@
 === Category Subscriptions ===
+
 Contributors: djcp
 Donate link: 
 Tags: email, notification, notify, category, subscription, subscriptions
@@ -33,6 +34,15 @@ Other notes:
 * Only messages published after the date of installation are sent out.
 * Category hierarchy has no effect on subscriptions. If you subscribe to a parent category, you ARE NOT automatically subscribed to its children. This may be integrated into future releases.
 * Bounces ARE NOT handled for you. You can, however, set the "reply-to" and "from" addresses to allow you to collect them in a logical place.
+
+TODO:
+
+* More template tags.
+* Better bulk editing features.
+* Queue management / statistics.
+* A better template editing interface.
+* Better debugging - e.g. the ability to send example messages.
+* More flexible task scheduling.
 
 == Installation ==
 

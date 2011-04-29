@@ -22,6 +22,7 @@ class CategorySubscriptionsTemplate {
             'SITE_URL' => create_function( '', 'return get_bloginfo("url");' ),
             'ADMIN_EMAIL' => create_function('', 'return get_bloginfo("admin_email");' ),
             'DATE' => create_function('', 'return date(get_option("date_format"));'),
+            'TIME' => create_function('', 'return date(get_option("time_format"));'),
             'STYLESHEET_DIRECTORY' => create_function( '', 'return get_bloginfo("stylesheet_directory");' )
         );
 
@@ -87,6 +88,9 @@ class CategorySubscriptionsTemplate {
 
         array_push($this->post_template_variables, 'FORMATTED_POST_DATE');
         array_push($this->post_template_values, mysql2date(get_option('date_format'), $post->post_date));
+
+        array_push($this->post_template_variables, 'FORMATTED_POST_TIME');
+        array_push($this->post_template_values, mysql2date(get_option('time_format'), $post->post_date));
 
     }
 

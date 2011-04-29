@@ -5,6 +5,8 @@
     padding: 10px;
     border: 1px solid #e4e4e4;
     border-radius: 10px;
+    -moz-border-radius: 10px;
+    -webkit-border-radius: 10px;
 }
 
 .cat_sub_toggler span{
@@ -15,4 +17,25 @@
 
 .toggler_target{
     display: none;
+}
+
+#documentation_target dt{
+    font-weight: bold;
+}
+
+#documentation_target dd{
+    margin-left: 2em;
+    margin-bottom: 1em;
+}
+
+#documentation_target h3{
+    margin-top: 2em;
+}
+
+#documentation_target .doc_container{
+    padding: 0em 1em 0em 1em;
+    border: 1px solid;
+    border-radius: 10px;
+    -moz-border-radius: 10px;
+    -webkit-border-radius: 10px;
 }

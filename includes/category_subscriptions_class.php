@@ -537,14 +537,14 @@ public function admin_menu (){
       </td>
     </tr>
     <tr>
-        <th><label for="cat_sub_from_address"><?php _e('From address for messages'); ?></label></th>
+        <th><label for="cat_sub_from_address"><?php _e('From address'); ?></label></th>
         <td><input type="text" id="cat_sub_from_address" name="cat_sub_from_address" value="<?php echo esc_attr($this->from_address); ?>" size="70" /><br/>
-        <span class="description"><?php _e('Defaults to your "Admin Email" setting'); ?></span>
+        <span class="description"><?php _e('Defaults to your "Admin Email" setting, sets the "from" address used on outgoing messages.'); ?></span>
         </td>
     </tr>
-        <th><label for="cat_sub_reply_to_address"><?php _e('Reply to address for messages'); ?></label></th>
+        <th><label for="cat_sub_reply_to_address"><?php _e('Reply to address'); ?></label></th>
         <td><input type="text" id="cat_sub_reply_to_address" name="cat_sub_reply_to_address" value="<?php echo esc_attr($this->reply_to_address); ?>" size="70" /><br/>
-        <span class="description"><?php _e('Defaults to your "Admin Email" setting'); ?></span>
+        <span class="description"><?php _e('Defaults to your "Admin Email" setting, sets the "reply-to" address used on outgoing messages.'); ?></span>
         </td>
     </tr>
     <tr>
@@ -557,12 +557,77 @@ public function admin_menu (){
     </table>
 
     <h3><?php _e('Email Templates'); ?></h3>
-    <ul>
-        <li><?php _e('All email templates - daily, weekly, individual - share the same tags. So, for example, you can put [FIRST_NAME] in the subject line or body of any email template and it\'ll work the same.'); ?></li>
-        <li><?php _e('An "email row template" defines the template used in digest emails to display the list of messages. Each individual message has this template applied to it, and is then put in the [EMAIL_LIST] template tag for your daily or weekly digest.'); ?></li>
-        <li><?php _e('You should be sure both the HTML and plain text templates are kept up to date, as your subscribers have the ability to choose the format themselves.') ?></li>
-    </ul>
 
+    <h4 class="cat_sub_toggler" id="documentation_toggler"><?php _e('Template Tag Documentation'); ?><span><?php _e('expand. . .'); ?></span></h4>
+    <div id="documentation_target" class="toggler_target">
+        <p><?php _e('You should be sure both the HTML and plain text templates are kept up to date, as your subscribers have the ability to choose the format themselves.') ?></p>
+      <p><?php _e('Template tags have three contexts: global, post, and digested messages.  Template tags are case sensitive and must be enclosed in square brackets.'); ?></p>
+      <h3><?php _e('Global Template Tags'); ?></h3>
+      <div class="doc_container">
+          <p><?php _e('Global template tags are applied everywhere - to the email row templates, to the individual email templates, etc. Below is a list of the global template tags.'); ?></p>
+          <dl>
+            <dt>[PROFILE_URL]</dt>
+            <dd><?php _e('A link to the recipient\'s profile url, allowing them to manage their subscriptions.'); ?></dd>
+    
+            <dt>[SITE_TITLE]</dt>
+            <dd><?php _e('The site title as configured in "Settings -> General"'); ?></dd>
+
+            <dt>[DESCRIPTION]</dt>
+            <dd><?php _e('The site description (AKA "tagline") as configured in "Settings -> General"'); ?></dd>
+
+            <dt>[SITE_URL]</dt>
+            <dd><?php _e('The URL to this blog.'); ?></dd>
+
+            <dt>[ADMIN_EMAIL]</dt>
+            <dd><?php _e('The administrator email address, as configured in "Settings -> General"'); ?></dd>
+
+            <dt>[DATE], [TIME]</dt>
+            <dd><?php _e('The current date /  formatted according to the settings in "Settings -> General"'); ?></dd>
+
+            <dt>[STYLESHEET_DIRECTORY]</dt>
+            <dd><?php _e('The stylesheet directory of the currently active theme. Useful if you want to load remote resources into your email.'); ?></dd>
+    
+            <dt>[USER_LOGIN], [USER_NICENAME], [USER_EMAIL], [DISPLAY_NAME], [USER_FIRSTNAME], [USER_LASTNAME], [NICKNAME]</dt>
+            <dd><?php _e('These template variables contain the profile information for the user a message is being sent to.'); ?></dd>
+
+          </dl>
+        </div>
+
+        <h3><?php _e('Post Template Tags'); ?></h3>
+        <div class="doc_container">
+            <p><?php _e('Post template tags are applied to individual email and email row templates.'); ?></p>
+            <dl>
+                <dt>[POST_AUTHOR], [POST_DATE], [POST_CONTENT], [POST_TITLE], [GUID], [POST_EXCERPT]</dt>
+                <dd><?php _e('These variables are pulled directly from the post information. [POST_AUTHOR] is the author\'s id.'); ?></dd>
+
+                <dt>[CATEGORIES], [CATEGORIES_WITH_URLS]</dd>
+                <dd><?php _e('The list of categories applied to this post, joined with a comma.') ?></dd>
+
+                <dt>[EXCERPT]</dt>
+                <dd><?php _e("This will output the manually created excerpt if it exists or auto-create one for you if it doesn't. [POST_EXCERPT] only outputs the manually created excerpt. [EXCERPT] is probably more useful generally."); ?></dd>
+                
+                <dt>[AUTHOR_LOGIN], [AUTHOR_NICKNAME], [AUTHOR], [AUTHOR_URL], [AUTHOR_FIRST_NAME], [AUTHOR_LAST_NAME]</dt>
+                <dd><?php _e('The author information for this post, primarily pulled from the author\'s profile information. You probably want simply [AUTHOR_LOGIN] or [AUTHOR].'); ?></dd>
+                
+                <dt>[FORMATTED_POST_DATE], [FORMATTED_POST_TIME]</dt>
+                <dd><?php _e('The date / time of this post after being formatted by the settings in "Settings -> General."'); ?></dd>
+            </dl>
+        </div>
+
+        <h3><?php _e('Digested Message Template Tags'); ?></h3>
+        <div class="doc_container">
+            <p><?php _e('These tags are available only to daily or weekly digested messages.') ?></p>
+            <dl>
+                <dt>[EMAIL_LIST]</dt>
+                <dd><?php _e('The list of messages, sorted by post date. These messages have the "email row" templates applied to them.'); ?></dd>
+    
+                <dt>[TOC]</dt>
+                <dd>Coming soon!</dd>
+            </dl>
+        </div>
+
+    </div>
+    
     <?php $this->create_email_template_form_elements('individual') ?>
     <?php $this->create_email_template_form_elements('daily') ?>
     <?php $this->create_email_template_form_elements('weekly') ?>
@@ -581,11 +646,6 @@ public function admin_menu (){
         </tr>
     </table>
 
-    <h4 class="cat_sub_toggler" id="documentation_toggler"><?php _e('Template Tag Documentation'); ?><span><?php _e('expand. . .'); ?></span></h4>
-    <div id="documentation_target" class="toggler_target">
-      <h2><?php _e('Template Tags') ?></h2>
-    </div>
-    
 
 
   <p class="submit"><input type="submit" name="submit" id="submit" class="button-primary" value="<?php _e('Update Options'); ?>"  /></p> 
