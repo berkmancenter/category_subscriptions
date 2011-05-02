@@ -309,13 +309,13 @@ class CategorySubscriptions {
             foreach($query->posts as $post){
                 $message_content = $tmpl->fill_individual_message($usub->user_ID, $post->ID,true);
                 $message_list .= $message_content['content'];
-                error_log('Daily post info: ' . print_r($post,true));
+                //error_log('Daily post info: ' . print_r($post,true));
             }
 
             if(strlen($message_list) > 0){
                 // There are messages to send for this user.
                 $digested_message = $tmpl->fill_digested_message($usub->user_ID, $message_list, $frequency);
-                error_log('Digested message: '. print_r($digested_message,true));
+                //error_log('Digested message: '. print_r($digested_message,true));
 
                 $sender = new CategorySubscriptionsMessage($usub->user_ID,$this,$digested_message);
                 $sender->deliver();
@@ -600,8 +600,8 @@ public function admin_menu (){
                 <dt>[POST_AUTHOR], [POST_DATE], [POST_CONTENT], [POST_TITLE], [GUID], [POST_EXCERPT]</dt>
                 <dd><?php _e('These variables are pulled directly from the post information. [POST_AUTHOR] is the author\'s id.'); ?></dd>
 
-                <dt>[CATEGORIES], [CATEGORIES_WITH_URLS]</dd>
-                <dd><?php _e('The list of categories applied to this post, joined with a comma.') ?></dd>
+                <dt>[CATEGORIES], [CATEGORIES_WITH_URLS], [TAGS], [TAGS_WITH_URLS]</dd>
+                <dd><?php _e('The list of categories or tags applied to this post, joined with a comma.') ?></dd>
 
                 <dt>[EXCERPT]</dt>
                 <dd><?php _e("This will output the manually created excerpt if it exists or auto-create one for you if it doesn't. [POST_EXCERPT] only outputs the manually created excerpt. [EXCERPT] is probably more useful generally."); ?></dd>

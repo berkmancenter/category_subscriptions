@@ -47,18 +47,30 @@ class CategorySubscriptionsTemplate {
 
         array_push($this->post_template_variables,'CATEGORIES');
         array_push($this->post_template_variables,'CATEGORIES_WITH_URLS');
-        $pcats = wp_get_post_categories( $post->ID );
+        array_push($this->post_template_variables,'TAGS');
+        array_push($this->post_template_variables,'TAGS_WITH_URLS');
+
+        $pcats = wp_get_post_categories( $post->ID, array('fields' => 'all') );
         $cat_names = array();
         $cat_urls = array();
+        
         foreach($pcats as $cat){
-            $c = get_category( $cat );
-            array_push($cat_names, $c->name);
-            // Not happy about this, but I can't seem to make "get_category_link" work in this context. I would rather that the categories
-            // reflect their permalink structure.
-            array_push($cat_urls, '<a href="' . get_bloginfo('url') .'/?cat=' . $c->cat_ID . '">' . $c->name . '</a>');
+            array_push($cat_names, $cat->name);
+            array_push($cat_urls, '<a href="' . get_bloginfo('url') .'/?cat=' . $cat->term_id . '">' . $cat->name . '</a>');
         }
         array_push($this->post_template_values, implode(', ', $cat_names));
         array_push($this->post_template_values, implode(', ', $cat_urls));
+
+        $ptags = wp_get_post_tags( $post->ID, array('fields' => 'all') );
+        $tag_names = array();
+        $tag_urls = array();
+
+        foreach($ptags as $tag){
+            array_push($tag_names, $tag->name);
+            array_push($tag_urls, '<a href="' . get_bloginfo('url') .'/?tag=' . $tag->slug . '">' . $tag->name . '</a>');
+        }
+        array_push($this->post_template_values, implode(', ', $tag_names));
+        array_push($this->post_template_values, implode(', ', $tag_urls));
 
         $excerpt = $post->post_excerpt;
         if(strlen($excerpt) == 0){
