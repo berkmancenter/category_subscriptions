@@ -676,7 +676,7 @@ You can manage your subscriptions at the link below:
 [PROFILE_URL]
 ';
 
-    $this->weekly_email_subject = 'Weekly summary for [DATE], [SITE_TITLE]';
+    $this->weekly_email_subject = 'Weekly summary for [SITE_TITLE], Week ending [DATE]';
     $this->weekly_email_html_template = '<h3>A weekly email summary for your subscriptions at "<a href="[SITE_URL]">[SITE_TITLE]</a>"</h3>
 <div>
 [EMAIL_LIST]
@@ -710,7 +710,7 @@ A new post has been added to one of your subscriptions at [SITE_TITLE].
 
 ______________________________________
 [POST_TITLE] - [GUID]
-by [AUTHOR] on [FORMATTED_POST_DATE] in [CATEGORIES]
+by [AUTHOR] on [FORMATTED_POST_DATE] at [FORMATTED_POST_TIME] in [CATEGORIES]
 
 [POST_CONTENT]
 
@@ -720,7 +720,7 @@ You can manage your subscriptions at the link below:
 [PROFILE_URL]';
 
     $this->email_row_html_template = '<h2><a href="[GUID]">[POST_TITLE]</a></h2>
-<p><strong>by</strong> [AUTHOR] on [FORMATTED_POST_DATE]</p>
+<p><strong>by</strong> [AUTHOR] on [FORMATTED_POST_DATE] at [FORMATTED_POST_TIME]</p>
 <p><strong>in</strong> [CATEGORIES_WITH_URLS]</p>
 <div>
 [EXCERPT]
@@ -728,7 +728,7 @@ You can manage your subscriptions at the link below:
 <hr />';
 
     $this->email_row_text_template = '[POST_TITLE] - [GUID]
-by [AUTHOR] on [FORMATTED_POST_DATE] in [CATEGORIES]
+by [AUTHOR] on [FORMATTED_POST_DATE] at [FORMATTED_POST_TIME] in [CATEGORIES]
 
 [EXCERPT]
 _____________________________________________
