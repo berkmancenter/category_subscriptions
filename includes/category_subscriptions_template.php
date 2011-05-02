@@ -45,6 +45,7 @@ class CategorySubscriptionsTemplate {
             array_push($this->post_template_values, $post->{strtolower($opt)});
         }
 
+        
         array_push($this->post_template_variables,'CATEGORIES');
         array_push($this->post_template_variables,'CATEGORIES_WITH_URLS');
         array_push($this->post_template_variables,'TAGS');
@@ -104,6 +105,12 @@ class CategorySubscriptionsTemplate {
         array_push($this->post_template_variables, 'FORMATTED_POST_TIME');
         array_push($this->post_template_values, mysql2date(get_option('time_format'), $post->post_date));
 
+        array_push($this->post_template_variables, 'POST_ID');
+        array_push($this->post_template_values, $post->ID);
+
+    }
+
+    public function create_toc(&$cat_sub){
     }
 
     public function create_user_replacements(&$user){
@@ -131,18 +138,40 @@ class CategorySubscriptionsTemplate {
 
         $subject = preg_replace($patterns, $variables, $this->cat_sub->individual_email_subject);
         $content = '';
+        $toc_entry = '';
+
         if(get_user_meta($user_ID, 'cat_sub_delivery_format_pref',true) == 'html'){
-            $content = preg_replace($patterns, $variables, (($in_digest) ? $this->cat_sub->email_row_html_template : $this->cat_sub->individual_email_html_template));
+            if($in_digest){
+                $content = preg_replace($patterns, $variables, $this->cat_sub->email_row_html_template );
+                $toc_entry = preg_replace($patterns, $variables, $this->cat_sub->email_toc_html_template );
+            } else {
+                $content = preg_replace($patterns, $variables, $this->cat_sub->individual_email_html_template);
+            }
         } else {
-            $content = preg_replace($patterns, $variables, (($in_digest) ? $this->cat_sub->email_row_text_template : $this->cat_sub->individual_email_text_template));
+            //Plain text.
+            if($in_digest){
+                $content = preg_replace($patterns, $variables, $this->cat_sub->email_row_text_template );
+                $toc_entry = preg_replace($patterns, $variables, $this->cat_sub->email_toc_text_template );
+            } else {
+                $content = preg_replace($patterns, $variables, $this->cat_sub->individual_email_text_template);
+            }
         } 
 
-        return array('subject' => $subject, 'content' => $content);
+        return array('subject' => $subject, 'content' => $content, 'toc' => $toc_entry);
     }
 
-    public function fill_digested_message(&$user_ID,&$message_list,$frequency = 'daily'){
+    public function fill_digested_message(&$user_ID,&$posts,$frequency = 'daily'){
         $user = get_userdata($user_ID);
         $this->create_user_replacements($user);
+
+        $message_list = '';
+        $toc = '';
+
+        foreach($posts as $post){
+            $message_content = $this->fill_individual_message($user_ID, $post->ID, true);
+            $message_list .= $message_content['content'];
+            $toc .= $message_content['toc'];
+        }
 
         $patterns = array();
 
@@ -160,7 +189,10 @@ class CategorySubscriptionsTemplate {
         } else {
             $content = preg_replace($patterns, $variables, (($frequency == 'daily') ? $this->cat_sub->daily_email_text_template : $this->cat_sub->weekly_email_text_template));
         }
+
         $content = preg_replace('/\[EMAIL_LIST\]/', $message_list, $content);
+        $content = preg_replace('/\[TOC\]/', $toc, $content);
+
         return array('subject' => $subject, 'content' => $content);
     }
 

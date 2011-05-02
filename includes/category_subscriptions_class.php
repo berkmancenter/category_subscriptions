@@ -30,6 +30,9 @@ class CategorySubscriptions {
     var $email_row_html_template = '';
     var $email_row_text_template = '';
 
+    var $email_toc_html_template = '';
+    var $email_toc_text_template = '';
+
     var $editable_options = array(
         'max_batch',
         'send_delay',
@@ -51,7 +54,10 @@ class CategorySubscriptions {
         'individual_email_text_template',
 
         'email_row_text_template',
-        'email_row_html_template'
+        'email_row_html_template',
+
+        'email_toc_text_template',
+        'email_toc_html_template'
     );
 
     public function __construct(&$wpdb){
@@ -305,17 +311,10 @@ class CategorySubscriptions {
                     'post_status' => 'publish'
                 )
             );
-            $message_list = '';
-            foreach($query->posts as $post){
-                $message_content = $tmpl->fill_individual_message($usub->user_ID, $post->ID,true);
-                $message_list .= $message_content['content'];
-                //error_log('Daily post info: ' . print_r($post,true));
-            }
 
-            if(strlen($message_list) > 0){
+            if(count($query->posts) > 0){
                 // There are messages to send for this user.
-                $digested_message = $tmpl->fill_digested_message($usub->user_ID, $message_list, $frequency);
-                //error_log('Digested message: '. print_r($digested_message,true));
+                $digested_message = $tmpl->fill_digested_message($usub->user_ID, $query->posts, $frequency);
 
                 $sender = new CategorySubscriptionsMessage($usub->user_ID,$this,$digested_message);
                 $sender->deliver();
@@ -620,9 +619,10 @@ public function admin_menu (){
             <dl>
                 <dt>[EMAIL_LIST]</dt>
                 <dd><?php _e('The list of messages, sorted by post date. These messages have the "email row" templates applied to them.'); ?></dd>
-    
+
                 <dt>[TOC]</dt>
-                <dd>Coming soon!</dd>
+                <dd><?php _e('The list of messages used to create the Table of Contents, sorted by post date. These messages have the "email toc" templates applied to them.'); ?></dd>
+    
             </dl>
         </div>
 
@@ -632,7 +632,7 @@ public function admin_menu (){
     <?php $this->create_email_template_form_elements('daily') ?>
     <?php $this->create_email_template_form_elements('weekly') ?>
 
-    <h4 class="cat_sub_toggler" id="email_row_toggler"><?php _e('Email Rows'); ?><span><?php _e('expand. . .'); ?></span></h4>
+    <h4 class="cat_sub_toggler" id="email_row_toggler"><?php _e('Email Rows and TOC Entries'); ?><span><?php _e('expand. . .'); ?></span></h4>
     <table class="form-table toggler_target" id="email_target">
         <tr>
             <th><label for="cat_sub_email_row_html_template"><?php _e('HTML email row template'); ?></label>
@@ -640,9 +640,21 @@ public function admin_menu (){
             <td><textarea rows="10" cols="70" name="cat_sub_email_row_html_template"><?php echo esc_textarea($this->email_row_html_template); ?></textarea></td>
         </tr>
         <tr>
+            <th><label for="cat_sub_email_toc_html_template"><?php _e('HTML email TOC entry'); ?></label>
+            </th>
+            <td><textarea rows="5" cols="70" name="cat_sub_email_toc_html_template"><?php echo esc_textarea($this->email_toc_html_template); ?></textarea></td>
+        </tr>
+        <tr>
             <th><label for="cat_sub_email_row_text_template"><?php _e('Text email row template'); ?></label>
             </th>
             <td><textarea rows="10" cols="70" name="cat_sub_email_row_text_template"><?php echo esc_textarea($this->email_row_text_template); ?></textarea></td>
+        </tr>
+        <tr>
+            <th><label for="cat_sub_email_toc_text_template"><?php _e('Text email TOC entry'); ?></label>
+            </th>
+            <td><textarea rows="5" cols="70" name="cat_sub_email_toc_text_template"><?php echo esc_textarea($this->email_toc_text_template); ?></textarea><br />
+            <span class="description"><?php _e('Be sure to leave a blank line after so the entries in the plain text TOC don\'t run together.'); ?></span>
+            </td>
         </tr>
     </table>
 
@@ -657,9 +669,14 @@ public function admin_menu (){
 
     function initialize_templates(){
     // Set default templates.
-
     $this->daily_email_subject = 'Daily summary for [DATE], [SITE_TITLE]';
     $this->daily_email_html_template = '<h3>A daily email summary for your subscriptions at "<a href="[SITE_URL]">[SITE_TITLE]</a>"</h3>
+
+<p><strong>Table of contents</strong></p>
+<ol>
+[TOC]
+</ol>
+
 <div>
 [EMAIL_LIST]
 </div>
@@ -670,6 +687,11 @@ public function admin_menu (){
 
     $this->daily_email_text_template = 'A daily email summary for your subscriptions at "[SITE_TITLE]"
 
+__________________________________________
+
+[TOC]
+__________________________________________
+
 [EMAIL_LIST]
 
 You can manage your subscriptions at the link below:
@@ -678,6 +700,12 @@ You can manage your subscriptions at the link below:
 
     $this->weekly_email_subject = 'Weekly summary for [SITE_TITLE], Week ending [DATE]';
     $this->weekly_email_html_template = '<h3>A weekly email summary for your subscriptions at "<a href="[SITE_URL]">[SITE_TITLE]</a>"</h3>
+
+<p><strong>Table of contents</strong></p>
+<ol>
+[TOC]
+</ol>
+
 <div>
 [EMAIL_LIST]
 </div>
@@ -685,7 +713,13 @@ You can manage your subscriptions at the link below:
 <hr />
 <p>You can manage your subscriptions <a href="[PROFILE_URL]">here</a>.</p>';
 
-    $this->weekly_email_text_template = 'A weekly email summary for your subscriptions at "[SITE_TITLE]"
+$this->weekly_email_text_template = 'A weekly email summary for your subscriptions at "[SITE_TITLE]"
+
+Table of Contents:
+__________________________________________
+
+[TOC]
+__________________________________________
 
 [EMAIL_LIST]
 
@@ -719,7 +753,7 @@ ______________________________________
 You can manage your subscriptions at the link below:
 [PROFILE_URL]';
 
-    $this->email_row_html_template = '<h2><a href="[GUID]">[POST_TITLE]</a></h2>
+    $this->email_row_html_template = '<h2><a href="[GUID]">[POST_TITLE]</a><a name="[POST_ID]"></a></h2>
 <p><strong>by</strong> [AUTHOR] on [FORMATTED_POST_DATE] at [FORMATTED_POST_TIME]</p>
 <p><strong>in</strong> [CATEGORIES_WITH_URLS]</p>
 <div>
@@ -734,6 +768,9 @@ by [AUTHOR] on [FORMATTED_POST_DATE] at [FORMATTED_POST_TIME] in [CATEGORIES]
 _____________________________________________
 ';
 
+$this->email_toc_html_template = '<li><a href="#[POST_ID]"><strong>[POST_TITLE]</strong></a></li>';
+$this->email_toc_text_template = '* [POST_TITLE]
+';
 
     }
 
