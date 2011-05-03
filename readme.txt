@@ -54,6 +54,13 @@ Upload and unzip the file into your plugins/ folder. Multisite is A-OK.
 
 Sorry to hear it. You can add them manually, obviously, and collect their addresses in some other fashion. You can also use [this](http://wordpress.org/extend/plugins/simple-import-users/) plugin to bulk import users.
 
+= I would like to subscribe the entire population of Canada to my site. Will this plugin work for me? =
+
+Nope. 
+
+1. We hate spam. Don't do it.
+1. The delivery / templatting system is made to be "good enough" for small- to medium- sites, it's not engineered to serve as your own personal 'botnet.  We also don't do bounce handling, clickthrough tracking or bulk / envelope sending.
+
 = Why no bounce processing? =
 
 Because it's really complicated. Happy to entertain submissions.
@@ -64,6 +71,13 @@ See the "Category Subscriptions" options page under your Settings menu.
 
 == Changelog ==
 
-= 1.0 =
+= 0.1 =
+
 * Initial release
+
+== Other ==
+
+This plugin is licensed under the same terms as Wordpress itself.
+
+Copyright 2011, The President and Fellows of Harvard College
 

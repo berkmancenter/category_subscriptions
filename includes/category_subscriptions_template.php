@@ -168,6 +168,7 @@ class CategorySubscriptionsTemplate {
         $toc = '';
 
         foreach($posts as $post){
+            // So the default TOC is sorted by post date. 
             $message_content = $this->fill_individual_message($user_ID, $post->ID, true);
             $message_list .= $message_content['content'];
             $toc .= $message_content['toc'];
