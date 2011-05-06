@@ -141,6 +141,18 @@ class CategorySubscriptions {
     public function category_subscriptions_deactivate(){
         wp_clear_scheduled_hook('my_cat_sub_prepare_daily_messages');
         wp_clear_scheduled_hook('my_cat_sub_prepare_weekly_messages');
+    }
+
+    public function add_cat_sub_custom_column($columns){
+        $columns['cat_sub_subscriptions'] = __('Subscriptions');
+        return $columns;
+    }
+
+    public function manage_users_custom_column($empty = '', $column_name, $user_id){
+        if( $column_name == 'cat_sub_subscriptions' ) {
+            $user = get_userdata($user_id);
+            return $this->bulk_category_list($user);
+    	} 
     } 
 
     public function update_profile_fields ( $user_ID ){
@@ -429,6 +441,27 @@ class CategorySubscriptions {
   </table>
 <?php 
 }
+
+    private function bulk_category_list($user) {
+    //TODO
+    $categories = get_categories('hide_empty=0&orderby=name');
+    $sql = $this->wpdb->prepare("SELECT category_ID, delivery_time_preference from $this->user_subscriptions_table_name where user_ID = %d", array($user->ID));
+    $subscriptions = $this->wpdb->get_results($sql, OBJECT_K);
+    $output = '';
+
+    foreach ($categories as $cat){ 
+        $subscription_pref = isset($subscriptions[$cat->cat_ID]) ? $subscriptions[$cat->cat_ID] : NULL;
+        $output .= "<input type='checkbox' name='category_subscription_categories_{$user->ID}[]' value='{esc_attr($cat->cat_ID)}' id='category_subscription_category_{$user->ID}_{$cat->cat_ID}'" . (( $subscription_pref ) ? "checked='checked'" : ''). " >
+            <label for='category_subscription_category_{$user->ID}_{$cat->cat_ID}'>{htmlspecialchars($cat->cat_name)}</label>
+            <select name='delivery_time_preference_{$user->ID}_{$cat->cat_ID}'>
+                <option value='individual'{(($subscription_pref && $subscription_pref->delivery_time_preference == 'individual') ? ' selected=\'selected\' ' : '')}>{__('Immediately')}</option>
+                <option value='daily'{(($subscription_pref && $subscription_pref->delivery_time_preference == 'daily') ? ' selected=\'selected\'  : '')}>{__('Daily')}</option>
+                <option value='weekly'{(($subscription_pref && $subscription_pref->delivery_time_preference == 'weekly') ? ' selected=\'selected\' ' : '')}>{__('Weekly')}</option>
+                </select>
+                <br/>";
+        }
+        return $output;
+    }
 
     private function category_list($user) {
     //TODO
