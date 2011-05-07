@@ -451,14 +451,13 @@ class CategorySubscriptions {
 
     foreach ($categories as $cat){ 
         $subscription_pref = isset($subscriptions[$cat->cat_ID]) ? $subscriptions[$cat->cat_ID] : NULL;
-        $output .= "<input type='checkbox' name='category_subscription_categories_{$user->ID}[]' value='{esc_attr($cat->cat_ID)}' id='category_subscription_category_{$user->ID}_{$cat->cat_ID}'" . (( $subscription_pref ) ? "checked='checked'" : ''). " >
-            <label for='category_subscription_category_{$user->ID}_{$cat->cat_ID}'>{htmlspecialchars($cat->cat_name)}</label>
-            <select name='delivery_time_preference_{$user->ID}_{$cat->cat_ID}'>
-                <option value='individual'{(($subscription_pref && $subscription_pref->delivery_time_preference == 'individual') ? ' selected=\'selected\' ' : '')}>{__('Immediately')}</option>
-                <option value='daily'{(($subscription_pref && $subscription_pref->delivery_time_preference == 'daily') ? ' selected=\'selected\'  : '')}>{__('Daily')}</option>
-                <option value='weekly'{(($subscription_pref && $subscription_pref->delivery_time_preference == 'weekly') ? ' selected=\'selected\' ' : '')}>{__('Weekly')}</option>
-                </select>
-                <br/>";
+        $output .= "<input type='checkbox' name='category_subscription_categories_" . $user->ID . "[]' value='" . esc_attr($cat->cat_ID). "' id='category_subscription_category_" . $user->ID. "_".$cat->cat_ID."'" . (( $subscription_pref ) ? "checked='checked'" : ''). " > ";
+        $output .= "<label for='category_subscription_category_" . $user->ID ."_".$cat->cat_ID ."'>". htmlspecialchars($cat->cat_name) . "</label>";
+         $output .= "<select name='delivery_time_preference_" . $user->ID . "_" . $cat->cat_ID ."'>";
+         $output .= "<option value='individual'" . (($subscription_pref && $subscription_pref->delivery_time_preference == 'individual') ? ' selected=\'selected\' ' : '') . ">" . __('Immediately') . "</option>";
+         $output .= "<option value='daily'" . (($subscription_pref && $subscription_pref->delivery_time_preference == 'daily') ? ' selected=\'selected\' ' : '') . ">" . __('Daily') . "</option>";
+         $output .= "<option value='weekly'" . (($subscription_pref && $subscription_pref->delivery_time_preference == 'weekly') ? ' selected=\'selected\' ' : '') . ">" . __('Weekly') . "</option>";
+        $output .="</select><br/>";
         }
         return $output;
     }
