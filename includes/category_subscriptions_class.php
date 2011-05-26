@@ -457,36 +457,47 @@ class CategorySubscriptions {
 
 public function update_bulk_edit_changes(){
 	// error_log('Bulk update');
-	$user_ids = isset($_GET['cat_sub_bu_ids']) ? $_GET['cat_sub_bu_ids'] : array();
+
+	// Doing this to save precious characters in the GET request.
+	$value_map = array('i' => 'individual', 'd' => 'daily', 'w' => 'weekly','h' => 'html', 't' => 'text');
+
+	$user_ids = isset($_GET['csi']) ? $_GET['csi'] : array();
 	foreach($user_ids as $user_ID){
+		update_user_meta($user_ID,'cat_sub_delivery_format_pref', $value_map[stripslashes($_GET['csdf' . $user_ID])]);
 		$this->wpdb->query( $this->wpdb->prepare( "DELETE FROM $this->user_subscriptions_table_name WHERE user_ID = %d", array($user_ID) ) );
-		$user_cat_ids = isset($_GET['cat_sub_cs_' . $user_ID]) ? $_GET['cat_sub_cs_' . $user_ID] : array();
+		$user_cat_ids = isset($_GET['cscs' . $user_ID]) ? $_GET['cscs' . $user_ID] : array();
 		foreach($user_cat_ids as $cat_ID){
-			$delivery_time_preference = $_GET['cat_sub_dtp_' . $user_ID . '_' . $cat_ID];
-			// error_log('User Id: ' . $user_ID . ' Category ID: ' . $cat_ID . ' DTP: ' . $delivery_time_preference);
+			$delivery_time_preference = $value_map[$_GET['csdt' . $user_ID . '_' . $cat_ID]];
+			error_log('User Id: ' . $user_ID . ' Category ID: ' . $cat_ID . ' DTP: ' . $delivery_time_preference);
 			$this->wpdb->insert($this->user_subscriptions_table_name, array('category_ID' => $cat_ID, 'user_ID' => $user_ID, 'delivery_time_preference' => stripslashes($delivery_time_preference)), array('%d','%d','%s') );
 		}
 	}
 }
 
     private function bulk_category_list($user) {
-    //TODO - Hook into admin_head to parse the variables after they have been submitted. 
-    $categories = get_categories('hide_empty=0&orderby=name');
-    $sql = $this->wpdb->prepare("SELECT category_ID, delivery_time_preference from $this->user_subscriptions_table_name where user_ID = %d", array($user->ID));
-    $subscriptions = $this->wpdb->get_results($sql, OBJECT_K);
-    $output = '<input type="hidden" name="cat_sub_bu_ids[]" value="' . $user->ID . '" />';
+	    //TODO - Hook into admin_head to parse the variables after they have been submitted. 
+	    $categories = get_categories('hide_empty=0&orderby=name');
+	    $sql = $this->wpdb->prepare("SELECT category_ID, delivery_time_preference from $this->user_subscriptions_table_name where user_ID = %d", array($user->ID));
+	    $subscriptions = $this->wpdb->get_results($sql, OBJECT_K);
+	    $output = '<input type="hidden" name="csi[]" value="' . $user->ID . '" />';
 
-    foreach ($categories as $cat){
+	    foreach ($categories as $cat){
         $subscription_pref = isset($subscriptions[$cat->cat_ID]) ? $subscriptions[$cat->cat_ID] : NULL;
-        $output .= "<input type='checkbox' name='cat_sub_cs_" . $user->ID . "[]' value='" . esc_attr($cat->cat_ID). "' id='cat_sub_cat_" . $user->ID. "_".$cat->cat_ID."'" . (( $subscription_pref ) ? "checked='checked'" : ''). " > ";
-        $output .= "<label for='cat_sub_cat_" . $user->ID ."_".$cat->cat_ID ."'>". htmlspecialchars($cat->cat_name) . "</label>";
-         $output .= "<select name='cat_sub_dtp_" . $user->ID . "_" . $cat->cat_ID ."'>";
-         $output .= "<option value='individual'" . (($subscription_pref && $subscription_pref->delivery_time_preference == 'individual') ? ' selected=\'selected\' ' : '') . ">" . __('Immediately') . "</option>";
-         $output .= "<option value='daily'" . (($subscription_pref && $subscription_pref->delivery_time_preference == 'daily') ? ' selected=\'selected\' ' : '') . ">" . __('Daily') . "</option>";
-         $output .= "<option value='weekly'" . (($subscription_pref && $subscription_pref->delivery_time_preference == 'weekly') ? ' selected=\'selected\' ' : '') . ">" . __('Weekly') . "</option>";
+        $output .= "<input type='checkbox' name='cscs" . $user->ID . "[]' value='" . esc_attr($cat->cat_ID). "' id='cs_c_" . $user->ID. "_".$cat->cat_ID."'" . (( $subscription_pref ) ? "checked='checked'" : ''). " > ";
+        $output .= "<label for='cs_c_" . $user->ID ."_".$cat->cat_ID ."'>". htmlspecialchars($cat->cat_name) . "</label>";
+         $output .= "<select name='csdt" . $user->ID . "_" . $cat->cat_ID ."'>";
+         $output .= "<option value='i'" . (($subscription_pref && $subscription_pref->delivery_time_preference == 'individual') ? ' selected=\'selected\' ' : '') . ">" . __('Immediately') . "</option>";
+         $output .= "<option value='d'" . (($subscription_pref && $subscription_pref->delivery_time_preference == 'daily') ? ' selected=\'selected\' ' : '') . ">" . __('Daily') . "</option>";
+         $output .= "<option value='w'" . (($subscription_pref && $subscription_pref->delivery_time_preference == 'weekly') ? ' selected=\'selected\' ' : '') . ">" . __('Weekly') . "</option>";
         $output .="</select><br/>";
-        }
-        return $output;
+			}
+
+			$output .= __('Format: ') . "<select name='csdf" . $user->ID . "' id='csdf" . $user->ID . "'>";
+			$output .= "<option value='h' " . ((get_user_meta($user->ID, 'cat_sub_delivery_format_pref',true) == 'html') ? 'selected="selected"' : '') . ">HTML</option>";
+			$output .= "<option value='t' " . ((get_user_meta($user->ID, 'cat_sub_delivery_format_pref',true) == 'text') ? 'selected="selected"' : '') . ">Text</option>";
+			$output .= '</select>';
+
+			return $output;
     }
 
     private function category_list($user) {
