@@ -443,26 +443,44 @@ class CategorySubscriptions {
 <?php 
 }
 
-    public function update_bulk_edit_changes(){
-      error_log('Bulk update, sucka');
-      $user_ids = isset($_GET['category_subscription_bulk_user_ids']) ? $_GET['category_subscription_bulk_user_ids'] : false;
-      if($user_ids){
-        error_log('Bulk user ids: '. print_r($user_ids,true));
-      }
-    }
+/*
+	// Doesn't work - you can only remove items from the bulk actions menu.
+	// http://core.trac.wordpress.org/ticket/16031
+
+		public function custom_bulk_action($actions){
+			error_log(print_r($actions,true));
+			$actions['catsub'] = __('Update Subscriptions');
+			error_log(print_r($actions,true));
+			return $actions;
+		}
+*/
+
+public function update_bulk_edit_changes(){
+	// error_log('Bulk update');
+	$user_ids = isset($_GET['cat_sub_bu_ids']) ? $_GET['cat_sub_bu_ids'] : array();
+	foreach($user_ids as $user_ID){
+		$this->wpdb->query( $this->wpdb->prepare( "DELETE FROM $this->user_subscriptions_table_name WHERE user_ID = %d", array($user_ID) ) );
+		$user_cat_ids = isset($_GET['cat_sub_cs_' . $user_ID]) ? $_GET['cat_sub_cs_' . $user_ID] : array();
+		foreach($user_cat_ids as $cat_ID){
+			$delivery_time_preference = $_GET['cat_sub_dtp_' . $user_ID . '_' . $cat_ID];
+			// error_log('User Id: ' . $user_ID . ' Category ID: ' . $cat_ID . ' DTP: ' . $delivery_time_preference);
+			$this->wpdb->insert($this->user_subscriptions_table_name, array('category_ID' => $cat_ID, 'user_ID' => $user_ID, 'delivery_time_preference' => stripslashes($delivery_time_preference)), array('%d','%d','%s') );
+		}
+	}
+}
 
     private function bulk_category_list($user) {
     //TODO - Hook into admin_head to parse the variables after they have been submitted. 
     $categories = get_categories('hide_empty=0&orderby=name');
     $sql = $this->wpdb->prepare("SELECT category_ID, delivery_time_preference from $this->user_subscriptions_table_name where user_ID = %d", array($user->ID));
     $subscriptions = $this->wpdb->get_results($sql, OBJECT_K);
-    $output = '<input type="hidden" name="category_subscription_bulk_user_ids[]" value="' . $user->ID . '" />';
+    $output = '<input type="hidden" name="cat_sub_bu_ids[]" value="' . $user->ID . '" />';
 
     foreach ($categories as $cat){
         $subscription_pref = isset($subscriptions[$cat->cat_ID]) ? $subscriptions[$cat->cat_ID] : NULL;
-        $output .= "<input type='checkbox' name='category_subscription_categories_" . $user->ID . "[]' value='" . esc_attr($cat->cat_ID). "' id='category_subscription_category_" . $user->ID. "_".$cat->cat_ID."'" . (( $subscription_pref ) ? "checked='checked'" : ''). " > ";
-        $output .= "<label for='category_subscription_category_" . $user->ID ."_".$cat->cat_ID ."'>". htmlspecialchars($cat->cat_name) . "</label>";
-         $output .= "<select name='delivery_time_preference_" . $user->ID . "_" . $cat->cat_ID ."'>";
+        $output .= "<input type='checkbox' name='cat_sub_cs_" . $user->ID . "[]' value='" . esc_attr($cat->cat_ID). "' id='cat_sub_cat_" . $user->ID. "_".$cat->cat_ID."'" . (( $subscription_pref ) ? "checked='checked'" : ''). " > ";
+        $output .= "<label for='cat_sub_cat_" . $user->ID ."_".$cat->cat_ID ."'>". htmlspecialchars($cat->cat_name) . "</label>";
+         $output .= "<select name='cat_sub_dtp_" . $user->ID . "_" . $cat->cat_ID ."'>";
          $output .= "<option value='individual'" . (($subscription_pref && $subscription_pref->delivery_time_preference == 'individual') ? ' selected=\'selected\' ' : '') . ">" . __('Immediately') . "</option>";
          $output .= "<option value='daily'" . (($subscription_pref && $subscription_pref->delivery_time_preference == 'daily') ? ' selected=\'selected\' ' : '') . ">" . __('Daily') . "</option>";
          $output .= "<option value='weekly'" . (($subscription_pref && $subscription_pref->delivery_time_preference == 'weekly') ? ' selected=\'selected\' ' : '') . ">" . __('Weekly') . "</option>";
