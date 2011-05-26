@@ -149,10 +149,11 @@ class CategorySubscriptions {
     }
 
     public function manage_users_custom_column($empty = '', $column_name, $user_id){
-        if( $column_name == 'cat_sub_subscriptions' ) {
-            $user = get_userdata($user_id);
-            return $this->bulk_category_list($user);
-    	} 
+      if( $column_name == 'cat_sub_subscriptions' ) {
+        wp_enqueue_style('admin.css');
+        $user = get_userdata($user_id);
+        return $this->bulk_category_list($user);
+      } 
     } 
 
     public function update_profile_fields ( $user_ID ){
@@ -442,14 +443,22 @@ class CategorySubscriptions {
 <?php 
 }
 
+    public function update_bulk_edit_changes(){
+      error_log('Bulk update, sucka');
+      $user_ids = isset($_GET['category_subscription_bulk_user_ids']) ? $_GET['category_subscription_bulk_user_ids'] : false;
+      if($user_ids){
+        error_log('Bulk user ids: '. print_r($user_ids,true));
+      }
+    }
+
     private function bulk_category_list($user) {
-    //TODO
+    //TODO - Hook into admin_head to parse the variables after they have been submitted. 
     $categories = get_categories('hide_empty=0&orderby=name');
     $sql = $this->wpdb->prepare("SELECT category_ID, delivery_time_preference from $this->user_subscriptions_table_name where user_ID = %d", array($user->ID));
     $subscriptions = $this->wpdb->get_results($sql, OBJECT_K);
-    $output = '';
+    $output = '<input type="hidden" name="category_subscription_bulk_user_ids[]" value="' . $user->ID . '" />';
 
-    foreach ($categories as $cat){ 
+    foreach ($categories as $cat){
         $subscription_pref = isset($subscriptions[$cat->cat_ID]) ? $subscriptions[$cat->cat_ID] : NULL;
         $output .= "<input type='checkbox' name='category_subscription_categories_" . $user->ID . "[]' value='" . esc_attr($cat->cat_ID). "' id='category_subscription_category_" . $user->ID. "_".$cat->cat_ID."'" . (( $subscription_pref ) ? "checked='checked'" : ''). " > ";
         $output .= "<label for='category_subscription_category_" . $user->ID ."_".$cat->cat_ID ."'>". htmlspecialchars($cat->cat_name) . "</label>";

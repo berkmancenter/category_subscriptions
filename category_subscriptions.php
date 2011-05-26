@@ -39,9 +39,11 @@ register_activation_hook(__FILE__,array( $cat_sub,'category_subscriptions_instal
 register_deactivation_hook(__FILE__,array( $cat_sub,'category_subscriptions_deactivate' ));
 
 // Bulk editing
-add_filter('manage_users_columns', array($cat_sub, 'add_cat_sub_custom_column'));
-add_filter('manage_users_custom_column', array($cat_sub, 'manage_users_custom_column'), 10, 3);
-
+if(current_user_can('manage_options')){
+  add_filter('manage_users_columns', array($cat_sub, 'add_cat_sub_custom_column'));
+  add_filter('manage_users_custom_column', array($cat_sub, 'manage_users_custom_column'), 10, 3);
+  add_action('admin_head', array($cat_sub, 'update_bulk_edit_changes'));
+}
 
 // show options on profile page
 add_action( 'edit_user_profile', array( $cat_sub, 'show_profile_fields' ) );
