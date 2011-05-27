@@ -72,8 +72,10 @@ add_action( 'admin_menu', array( $cat_sub, 'admin_menu' ) );
 // Remove subscriptions when a user is removed from a blog, spammed, or deleted.
 // RIGHT HERE is where foreign keys prove their worth.
 
-add_action('deleted_user', array( $cat_sub, 'clean_up_removed_user'));
+add_action('delete_user', array( $cat_sub, 'clean_up_removed_user'));
+add_action('wpmu_delete_user', array( $cat_sub, 'clean_up_removed_user'));
 add_action('make_spam_user', array( $cat_sub, 'clean_up_removed_user'));
+
 // Probably need to check for multisite here to instantiate this hook if needed.
 add_action('remove_user_from_blog', array( $cat_sub, 'clean_up_removed_user'));
 
