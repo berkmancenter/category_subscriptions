@@ -739,7 +739,7 @@ public function admin_menu (){
 
     function initialize_templates(){
     // Set default templates.
-    $this->daily_email_subject = 'Daily summary for [DATE], [SITE_TITLE]';
+    $this->daily_email_subject = 'Daily Digest for [SITE_TITLE], [DATE]';
     $this->daily_email_html_template = '<h3>A daily email summary for your subscriptions at "<a href="[SITE_URL]">[SITE_TITLE]</a>"</h3>
 
 <p><strong>Table of contents</strong></p>
@@ -752,7 +752,8 @@ public function admin_menu (){
 </div>
 
 <hr />
-<p>You can manage your subscriptions <a href="[PROFILE_URL]">here</a>.</p>
+<p>&copy; 2011 [SITE_TITLE]<br/>
+You can manage your subscriptions <a href="[PROFILE_URL]">here</a>.</p>
 ';
 
     $this->daily_email_text_template = 'A daily email summary for your subscriptions at "[SITE_TITLE]"
@@ -764,11 +765,13 @@ __________________________________________
 
 [EMAIL_LIST]
 
+(c) 2011 [SITE_TITLE]
+
 You can manage your subscriptions at the link below:
 [PROFILE_URL]
 ';
 
-    $this->weekly_email_subject = 'Weekly summary for [SITE_TITLE], Week ending [DATE]';
+    $this->weekly_email_subject = 'Weekly Digest for [SITE_TITLE], Week ending [DATE]';
     $this->weekly_email_html_template = '<h3>A weekly email summary for your subscriptions at "<a href="[SITE_URL]">[SITE_TITLE]</a>"</h3>
 
 <p><strong>Table of contents</strong></p>
@@ -781,7 +784,9 @@ You can manage your subscriptions at the link below:
 </div>
 
 <hr />
-<p>You can manage your subscriptions <a href="[PROFILE_URL]">here</a>.</p>';
+<p>
+&copy; 2011 [SITE_TITLE]<br/>
+You can manage your subscriptions <a href="[PROFILE_URL]">here</a>.</p>';
 
 $this->weekly_email_text_template = 'A weekly email summary for your subscriptions at "[SITE_TITLE]"
 
@@ -793,45 +798,54 @@ __________________________________________
 
 [EMAIL_LIST]
 
+(c) 2011 [SITE_TITLE]
 You can manage your subscriptions at the link below:
 [PROFILE_URL]';
 
-    $this->individual_email_subject = '[POST_TITLE], [CATEGORIES] - [SITE_TITLE]';
+    $this->individual_email_subject = 'A new post at [SITE_TITLE] - [POST_TITLE]';
 
     $this->individual_email_html_template = '<p>Dear [USER_LOGIN],</p>
         <p>A new post has been added to one of your subscriptions at <a href="[SITE_URL]">[SITE_TITLE]</a>.</p>
         <hr />
-        <h2>[POST_TITLE] - [CATEGORIES_WITH_URLS]</h2>
-        <h3>by [AUTHOR] on [FORMATTED_POST_DATE]</h3>
-        [POST_CONTENT]
+        <h2><a href="[GUID]">[POST_TITLE]</a></h2>
+        <h3>by [AUTHOR] on [FORMATTED_POST_DATE] in [CATEGORIES_WITH_URLS]</h3>
+        <blockquote>[EXCERPT]</blockquote>
 
         <hr />
-        <p>You can manage your subscriptions <a href="[PROFILE_URL]">here</a>.</p>';
+        <p>
+				&copy; 2011 [SITE_TITLE]<br/>
+				You can manage your subscriptions <a href="[PROFILE_URL]">here</a>.</p>';
 
     $this->individual_email_text_template = 'Dear [USER_LOGIN],
 
 A new post has been added to one of your subscriptions at [SITE_TITLE].
 
 ______________________________________
-[POST_TITLE] - [GUID]
+[POST_TITLE]
+[GUID]
+
 by [AUTHOR] on [FORMATTED_POST_DATE] at [FORMATTED_POST_TIME] in [CATEGORIES]
 
-[POST_CONTENT]
+[EXCERPT]
 
 ______________________________________
 
+(c) 2011 [SITE_TITLE]
+
 You can manage your subscriptions at the link below:
-[PROFILE_URL]';
+[PROFILE_URL]
+';
 
     $this->email_row_html_template = '<h2><a href="[GUID]">[POST_TITLE]</a><a name="[POST_ID]"></a></h2>
-<p><strong>by</strong> [AUTHOR] on [FORMATTED_POST_DATE] at [FORMATTED_POST_TIME]</p>
-<p><strong>in</strong> [CATEGORIES_WITH_URLS]</p>
+<p><strong>by</strong> [AUTHOR] on [FORMATTED_POST_DATE] at [FORMATTED_POST_TIME] <strong>in</strong> [CATEGORIES_WITH_URLS]</p>
 <div>
 [EXCERPT]
 </div>
 <hr />';
 
-    $this->email_row_text_template = '[POST_TITLE] - [GUID]
+    $this->email_row_text_template = '[POST_TITLE]
+[GUID]
+
 by [AUTHOR] on [FORMATTED_POST_DATE] at [FORMATTED_POST_TIME] in [CATEGORIES]
 
 [EXCERPT]
