@@ -110,9 +110,6 @@ class CategorySubscriptionsTemplate {
 
     }
 
-    public function create_toc(&$cat_sub){
-    }
-
     public function create_user_replacements(&$user){
         // Reset to the empty state.
         $this->user_template_variables = array('USER_LOGIN','USER_NICENAME','USER_EMAIL','DISPLAY_NAME','USER_FIRSTNAME','USER_LASTNAME','NICKNAME');
