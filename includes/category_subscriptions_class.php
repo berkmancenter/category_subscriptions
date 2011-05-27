@@ -539,6 +539,10 @@ public function update_bulk_edit_changes(){
     echo '</tbody></table>';
 }
 
+public function clean_up_removed_user($user_ID, $blog_id = 0){
+	$this->wpdb->query( $this->wpdb->prepare( "DELETE FROM $this->user_subscriptions_table_name WHERE user_ID = %d", array($user_ID) ) );
+}
+
 public function admin_menu (){
     wp_enqueue_style('admin.css');
     wp_enqueue_script('jquery.cookie.js');
