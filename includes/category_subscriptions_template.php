@@ -44,7 +44,6 @@ class CategorySubscriptionsTemplate {
         foreach($this->post_template_variables as $opt){
             array_push($this->post_template_values, $post->{strtolower($opt)});
         }
-
         
         array_push($this->post_template_variables,'CATEGORIES');
         array_push($this->post_template_variables,'CATEGORIES_WITH_URLS');
@@ -166,6 +165,8 @@ class CategorySubscriptionsTemplate {
 
         foreach($posts as $post){
             // So the default TOC is sorted by post date. 
+						// Get categories here and start the data structure for category grouping.
+
             $message_content = $this->fill_individual_message($user_ID, $post->ID, true);
             $message_list .= $message_content['content'];
             $toc .= $message_content['toc'];
