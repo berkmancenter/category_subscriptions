@@ -12,6 +12,7 @@ class CategorySubscriptions {
     var $send_weekly_email_on = 0;
 
     var $from_address = '';
+    var $from_name = '';
     var $reply_to_address = '';
     var $bcc_address = '';
 
@@ -38,6 +39,7 @@ class CategorySubscriptions {
         'send_delay',
         'send_weekly_email_on',
         'from_address',
+        'from_name',
         'reply_to_address',
         'bcc_address',
 
@@ -90,6 +92,11 @@ class CategorySubscriptions {
         return $this->__construct($wpdb);
     }
 
+    // for using in a callback. 
+    public function from_name(){
+      return $this->from_name;
+    }
+
     public function category_subscriptions_install(){
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
 
@@ -120,7 +127,7 @@ class CategorySubscriptions {
             KEY user_ID (user_ID),
             KEY post_ID (post_ID),
             KEY to_send (to_send),
-            KEY delivered_at (deliver_at)
+            KEY delivered_at (delivered_at)
         ) DEFAULT CHARSET=utf8";
     
         dbDelta($sql);
@@ -596,7 +603,7 @@ public function admin_menu (){
       </td>
     </tr>
     <tr>
-    <th><label for="cat_sub_send_delay"><?php _e('Wait this long before sending out published posts');  ?></label></th>
+      <th><label for="cat_sub_send_delay"><?php _e('Wait this long before sending out published posts');  ?></label></th>
       <td>
         <select name="cat_sub_send_delay">
         <option value="0" <?php echo (($this->send_delay == 0) ? 'selected="selected"' : '') ?>><?php _e("Don't wait, send ASAP"); ?></option>
@@ -610,11 +617,18 @@ public function admin_menu (){
       </td>
     </tr>
     <tr>
-        <th><label for="cat_sub_from_address"><?php _e('From address'); ?></label></th>
-        <td><input type="text" id="cat_sub_from_address" name="cat_sub_from_address" value="<?php echo esc_attr($this->from_address); ?>" size="70" /><br/>
+      <th><label for="cat_sub_from_address"><?php _e('From address'); ?></label></th>
+      <td><input type="text" id="cat_sub_from_address" name="cat_sub_from_address" value="<?php echo esc_attr($this->from_address); ?>" size="70" /><br/>
         <span class="description"><?php _e('Defaults to your "Admin Email" setting, sets the "from" address used on outgoing messages.'); ?></span>
-        </td>
+      </td>
     </tr>
+    <tr>
+      <th><label for="cat_sub_from_name"><?php _e('From name'); ?></label></th>
+      <td><input type="text" id="cat_sub_from_name" name="cat_sub_from_name" value="<?php echo esc_attr($this->from_name); ?>" size="70" /><br/>
+        <span class="description"><?php _e('The "from" name for these messages. Defaults to the title of your blog.'); ?></span>
+      </td>
+    </tr>
+    <tr>
         <th><label for="cat_sub_reply_to_address"><?php _e('Reply to address'); ?></label></th>
         <td><input type="text" id="cat_sub_reply_to_address" name="cat_sub_reply_to_address" value="<?php echo esc_attr($this->reply_to_address); ?>" size="70" /><br/>
         <span class="description"><?php _e('Defaults to your "Admin Email" setting, sets the "reply-to" address used on outgoing messages.'); ?></span>
@@ -626,7 +640,6 @@ public function admin_menu (){
         <span class="description"><?php _e('BCC all messages to this address - useful for debugging.'); ?></span>
         </td>
     </tr>
-    <tr>
     </table>
 
     <h3><?php _e('Email Templates'); ?></h3>

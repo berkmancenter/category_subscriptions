@@ -29,6 +29,12 @@ class CategorySubscriptionsMessage {
             array_push($headers, 'Bcc: ' . $this->cat_sub->bcc_address);
         }
 
+        if(strlen($this->cat_sub->from_name) > 0){
+          add_filter('wp_mail_from_name', array($this->cat_sub,'from_name') );
+        } else {
+          add_filter('wp_mail_from_name', create_function('','return get_bloginfo("name");') );
+        }
+
         $content = $this->formatted_msg['content'];
         if(get_user_meta($user->ID, 'cat_sub_delivery_format_pref',true) == 'html'){
             // HTML
