@@ -118,6 +118,27 @@ class CategorySubscriptionsTemplate {
         }
     }
 
+		public function fill_category_header(&$user_ID, &$cat){
+				$patterns = array();
+
+        $patterns_tmp = array_merge(array('CATEGORY_URL','CATEGORY_NAME'),$this->global_callback_variables, $this->user_template_variables);
+        foreach($patterns_tmp as $pat){
+            array_push($patterns, '/\[' . $pat . '\]/');
+        }
+        $variables = array_merge(array(get_bloginfo('url') .'/?cat=' . $cat->term_id, $cat->name), $this->global_callback_values, $this->user_template_values);
+
+				$header_content = '';
+
+        if(get_user_meta($user_ID, 'cat_sub_delivery_format_pref',true) == 'html'){
+            $header_content = preg_replace($patterns, $variables, $this->cat_sub->header_row_html_template);
+				} else {
+            $header_content = preg_replace($patterns, $variables, $this->cat_sub->header_row_text_template);
+				}
+
+				return $header_content;
+			
+		}
+
     public function fill_individual_message(&$user_ID,&$post_ID,$in_digest = false){
         $user = get_userdata($user_ID);
         $post = get_post($post_ID);
@@ -161,9 +182,12 @@ class CategorySubscriptionsTemplate {
         $this->create_user_replacements($user);
 
         $message_list = '';
+				$grouped_message_list = '';
         $toc = '';
 
         $category_list = array();
+				$unique_category_list = array();
+				$post_content = array();
 
         foreach($posts as $post){
           // So the default TOC is sorted by post date. 
@@ -172,28 +196,59 @@ class CategorySubscriptionsTemplate {
           $pcats = wp_get_post_categories( $post->ID, array('fields' => 'all') );
 
           foreach($pcats as $cat){
-            if(! isset($category_list[$cat->term_id])){
+            if(! isset($category_list[$cat->name])){
               // Initialize the empty array we're going to push the post ID on to.
-              $category_list[$cat->term_id]['posts'] = array();
-              $category_list[$cat->term_id]['cat'] = array();
+              $category_list[$cat->name]['posts'] = array();
+              $category_list[$cat->name]['cat'] = array();
+							array_push($unique_category_list, $cat->name);
             }
-            if(! isset($post_seen[$post->ID])){
+            if(! isset($post_content[$post->ID])){
               // Should be a post that we've not rendered yet.
-              array_push($category_list[$cat->term_id]['posts'],$post->ID);
-              $category_list[$cat->term_id]['cat'] = $cat;
+              array_push($category_list[$cat->name]['posts'],$post->ID);
+              $category_list[$cat->name]['cat'] = $cat;
             }
           }
-          // $category_list should be a HoA containing unique posts and the first category they appeared in.
+          // $category_list should be a HoA containing unique posts and the first category they appeared in, indexed on the category name.
 
           $message_content = $this->fill_individual_message($user_ID, $post->ID, true);
           $message_list .= $message_content['content'];
+					$post_content[$post->ID] = $message_content['content'];
           $toc .= $message_content['toc'];
         }
 
-        //TODO
+				function custom_cat_sort($a,$b){
+					$a_numeric_start = preg_match('/^\d/',$a);
+					$b_numeric_start = preg_match('/^\d/',$b);
 
-        error_log('Category List: ' . print_r($category_list,true));
-        print_r($category_list);
+					if($a_numeric_start && ! $b_numeric_start){
+						return 1;
+					}
+					if(! $a_numeric_start && $b_numeric_start){
+						return -1;
+					}
+					if($a_numeric_start && $b_numeric_start){
+						return ($a < $b) ? -1 : 1;
+					}
+					if($a == $b){
+						return 0;
+					}
+					return ($a < $b) ? -1 : 1;
+				}
+
+				usort($unique_category_list,'custom_cat_sort');
+
+				var_export($category_list);
+				error_log(var_export($category_list,true));
+
+				var_export($unique_category_list);
+				error_log(var_export($unique_category_list,true));
+
+				foreach($unique_category_list as $ucat){
+					$grouped_message_list .= $this->fill_category_header($user_ID,$ucat);
+					foreach($category_list[$ucat]['posts'] as $ucatpost){
+						$grouped_message_list .= $post_content[$ucatpost];
+					}
+				}
 
         $patterns = array();
 
@@ -212,7 +267,10 @@ class CategorySubscriptionsTemplate {
             $content = preg_replace($patterns, $variables, (($frequency == 'daily') ? $this->cat_sub->daily_email_text_template : $this->cat_sub->weekly_email_text_template));
         }
 
+				error_log('Category Grouped Email List: '. $grouped_message_list);
+
         $content = preg_replace('/\[EMAIL_LIST\]/', $message_list, $content);
+        $content = preg_replace('/\[CATEGORY_GROUPED_EMAIL_LIST\]/', $grouped_message_list, $content);
         $content = preg_replace('/\[TOC\]/', $toc, $content);
 
         return array('subject' => $subject, 'content' => $content);

@@ -28,6 +28,9 @@ class CategorySubscriptions {
     var $individual_email_html_template = '';
     var $individual_email_text_template = '';
 
+		var $header_row_html_template = '';
+		var $header_row_text_template = '';
+
     var $email_row_html_template = '';
     var $email_row_text_template = '';
 
@@ -59,7 +62,10 @@ class CategorySubscriptions {
         'email_row_html_template',
 
         'email_toc_text_template',
-        'email_toc_html_template'
+        'email_toc_html_template',
+
+				'header_row_html_template',
+				'header_row_text_template'
     );
 
     public function __construct(&$wpdb){
@@ -707,6 +713,9 @@ public function admin_menu (){
                 <dt>[EMAIL_LIST]</dt>
                 <dd><?php _e('The list of messages, sorted by post date. These messages have the "email row" templates applied to them.'); ?></dd>
 
+                <dt>[CATEGORY_GROUPED_EMAIL_LIST]</dt>
+                <dd><?php _e('The list of messages, grouped by category and then sorted by post date. These messages have the "email row" templates applied to them.  The category header will be formatted according to the "category row template" for the appropriate email format (text or html).'); ?></dd>
+
                 <dt>[TOC]</dt>
                 <dd><?php _e('The list of messages used to create the Table of Contents, sorted by post date. These messages have the "email toc" templates applied to them.'); ?></dd>
     
@@ -721,6 +730,16 @@ public function admin_menu (){
 
     <h4 class="cat_sub_toggler" id="email_row_toggler"><?php _e('Email Rows and TOC Entries'); ?><span><?php _e('expand. . .'); ?></span></h4>
     <table class="form-table toggler_target" id="email_target">
+        <tr>
+            <th><label for="cat_sub_header_row_html_template"><?php _e('HTML category header row template'); ?></label>
+            </th>
+            <td><textarea rows="10" cols="70" name="cat_sub_header_row_html_template"><?php echo esc_textarea($this->header_row_html_template); ?></textarea></td>
+        </tr>
+        <tr>
+            <th><label for="cat_sub_header_row_text_template"><?php _e('Text category header row template'); ?></label>
+            </th>
+            <td><textarea rows="10" cols="70" name="cat_sub_header_row_text_template"><?php echo esc_textarea($this->header_row_text_template); ?></textarea></td>
+        </tr>
         <tr>
             <th><label for="cat_sub_email_row_html_template"><?php _e('HTML email row template'); ?></label>
             </th>
@@ -853,6 +872,10 @@ You can manage your subscriptions at the link below:
 [PROFILE_URL]
 ';
 
+
+		$this->header_row_html_template = '<h1><a href="[CATEGORY_URL]">[CATEGORY_NAME]</a></h1>';
+		$this->header_row_text_template = '[CATEGORY_NAME]
+';
     $this->email_row_html_template = '<h2><a href="[GUID]">[POST_TITLE]</a><a name="[POST_ID]"></a></h2>
 <p><strong>by</strong> [AUTHOR] on [FORMATTED_POST_DATE] at [FORMATTED_POST_TIME] <strong>in</strong> [CATEGORIES_WITH_URLS]</p>
 <div>
