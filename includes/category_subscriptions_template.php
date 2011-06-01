@@ -163,14 +163,37 @@ class CategorySubscriptionsTemplate {
         $message_list = '';
         $toc = '';
 
-        foreach($posts as $post){
-            // So the default TOC is sorted by post date. 
-						// Get categories here and start the data structure for category grouping.
+        $category_list = array();
 
-            $message_content = $this->fill_individual_message($user_ID, $post->ID, true);
-            $message_list .= $message_content['content'];
-            $toc .= $message_content['toc'];
+        foreach($posts as $post){
+          // So the default TOC is sorted by post date. 
+          // Get categories here and start the data structure for category grouping.
+
+          $pcats = wp_get_post_categories( $post->ID, array('fields' => 'all') );
+
+          foreach($pcats as $cat){
+            if(! isset($category_list[$cat->term_id])){
+              // Initialize the empty array we're going to push the post ID on to.
+              $category_list[$cat->term_id]['posts'] = array();
+              $category_list[$cat->term_id]['cat'] = array();
+            }
+            if(! isset($post_seen[$post->ID])){
+              // Should be a post that we've not rendered yet.
+              array_push($category_list[$cat->term_id]['posts'],$post->ID);
+              $category_list[$cat->term_id]['cat'] = $cat;
+            }
+          }
+          // $category_list should be a HoA containing unique posts and the first category they appeared in.
+
+          $message_content = $this->fill_individual_message($user_ID, $post->ID, true);
+          $message_list .= $message_content['content'];
+          $toc .= $message_content['toc'];
         }
+
+        //TODO
+
+        error_log('Category List: ' . print_r($category_list,true));
+        print_r($category_list);
 
         $patterns = array();
 
