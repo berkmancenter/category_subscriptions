@@ -176,6 +176,25 @@ class CategorySubscriptionsTemplate {
         return array('subject' => $subject, 'content' => $content, 'toc' => $toc_entry);
     }
 
+		function cat_sub_custom_cat_sort($a,$b){
+			$a_numeric_start = preg_match('/^\d/',$a);
+			$b_numeric_start = preg_match('/^\d/',$b);
+
+			if($a_numeric_start && ! $b_numeric_start){
+				return 1;
+			}
+			if(! $a_numeric_start && $b_numeric_start){
+				return -1;
+			}
+			if($a_numeric_start && $b_numeric_start){
+				return ($a < $b) ? -1 : 1;
+			}
+			if($a == $b){
+				return 0;
+			}
+			return ($a < $b) ? -1 : 1;
+		}
+
     public function fill_digested_message(&$user,&$posts,$frequency = 'daily'){
         $this->create_user_replacements($user);
 
@@ -216,26 +235,8 @@ class CategorySubscriptionsTemplate {
           $toc .= $message_content['toc'];
         }
 
-				function custom_cat_sort($a,$b){
-					$a_numeric_start = preg_match('/^\d/',$a);
-					$b_numeric_start = preg_match('/^\d/',$b);
 
-					if($a_numeric_start && ! $b_numeric_start){
-						return 1;
-					}
-					if(! $a_numeric_start && $b_numeric_start){
-						return -1;
-					}
-					if($a_numeric_start && $b_numeric_start){
-						return ($a < $b) ? -1 : 1;
-					}
-					if($a == $b){
-						return 0;
-					}
-					return ($a < $b) ? -1 : 1;
-				}
-
-				usort($unique_category_list,'custom_cat_sort');
+				usort($unique_category_list,'cat_sub_custom_cat_sort');
 
 				//var_export($category_list);
 				//error_log(var_export($category_list,true));
