@@ -180,7 +180,6 @@ class CategorySubscriptions {
         update_user_meta($user_ID,'cat_sub_delivery_format_pref', stripslashes($_POST['cat_sub_delivery_format_pref_' . $user_ID]));
     }
 
-
     private function create_individual_messages(&$post){
         // Create stubs for individual messages.
         // You get here if you are published and don't already have sent messages in the queue.
@@ -193,15 +192,9 @@ class CategorySubscriptions {
             return;
         }
 
-        function messages_conditions($a){
-            // nested functions. Yuck. Here's the perl version of what I'm trying to do here:
-            // my $category_conditions = join(' and ', map{'category_ID = ?' } @categories);
-            return 'category_ID = %d';
-        }
-
         $categories = wp_get_post_categories($post->ID);
 
-        $category_conditions = array_map('messages_conditions',$categories);
+        $category_conditions = array_map(create_function('$a','return "category_ID = %d";'),$categories);
         $parameters = $categories;
         array_unshift($parameters, 'individual');
         $conditions = implode(' OR ', $category_conditions);

@@ -119,6 +119,9 @@ class CategorySubscriptionsTemplate {
     }
 
 		public function fill_category_header(&$user, &$cat){
+				if($cat->name == ''){
+					return '';
+				}
 				$patterns = array();
 
         $patterns_tmp = array_merge(array('CATEGORY_URL','CATEGORY_NAME'),$this->global_callback_variables, $this->user_template_variables);
@@ -217,7 +220,7 @@ class CategorySubscriptionsTemplate {
             if(! isset($category_list[$cat->name])){
               // Initialize the empty array we're going to push the post ID on to.
               $category_list[$cat->name]['posts'] = array();
-              $category_list[$cat->name]['cat'] = array();
+              $category_list[$cat->name]['cat'] = '';
 							array_push($unique_category_list, $cat->name);
             }
             if(! isset($unique_post_list[$post->ID])){
@@ -236,7 +239,7 @@ class CategorySubscriptionsTemplate {
         }
 
 
-				usort($unique_category_list,'cat_sub_custom_cat_sort');
+				usort($unique_category_list,array($this,'cat_sub_custom_cat_sort'));
 
 				//var_export($category_list);
 				//error_log(var_export($category_list,true));
