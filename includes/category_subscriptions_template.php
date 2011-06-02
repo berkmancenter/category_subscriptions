@@ -118,7 +118,7 @@ class CategorySubscriptionsTemplate {
         }
     }
 
-		public function fill_category_header(&$user_ID, &$cat){
+		public function fill_category_header(&$user, &$cat){
 				$patterns = array();
 
         $patterns_tmp = array_merge(array('CATEGORY_URL','CATEGORY_NAME'),$this->global_callback_variables, $this->user_template_variables);
@@ -129,7 +129,7 @@ class CategorySubscriptionsTemplate {
 
 				$header_content = '';
 
-        if(get_user_meta($user_ID, 'cat_sub_delivery_format_pref',true) == 'html'){
+        if(get_user_meta($user->ID, 'cat_sub_delivery_format_pref',true) == 'html'){
             $header_content = preg_replace($patterns, $variables, $this->cat_sub->header_row_html_template);
 				} else {
             $header_content = preg_replace($patterns, $variables, $this->cat_sub->header_row_text_template);
@@ -139,8 +139,7 @@ class CategorySubscriptionsTemplate {
 			
 		}
 
-    public function fill_individual_message(&$user_ID,&$post_ID,$in_digest = false){
-        $user = get_userdata($user_ID);
+    public function fill_individual_message(&$user,&$post_ID,$in_digest = false){
         $post = get_post($post_ID);
         $this->create_user_replacements($user);
         $this->create_post_replacements($post);
@@ -157,7 +156,7 @@ class CategorySubscriptionsTemplate {
         $content = '';
         $toc_entry = '';
 
-        if(get_user_meta($user_ID, 'cat_sub_delivery_format_pref',true) == 'html'){
+        if(get_user_meta($user->ID, 'cat_sub_delivery_format_pref',true) == 'html'){
             if($in_digest){
                 $content = preg_replace($patterns, $variables, $this->cat_sub->email_row_html_template );
                 $toc_entry = preg_replace($patterns, $variables, $this->cat_sub->email_toc_html_template );
@@ -177,8 +176,7 @@ class CategorySubscriptionsTemplate {
         return array('subject' => $subject, 'content' => $content, 'toc' => $toc_entry);
     }
 
-    public function fill_digested_message(&$user_ID,&$posts,$frequency = 'daily'){
-        $user = get_userdata($user_ID);
+    public function fill_digested_message(&$user,&$posts,$frequency = 'daily'){
         $this->create_user_replacements($user);
 
         $message_list = '';
@@ -187,6 +185,7 @@ class CategorySubscriptionsTemplate {
 
         $category_list = array();
 				$unique_category_list = array();
+        $unique_post_list = array();
 				$post_content = array();
 
         foreach($posts as $post){
@@ -202,15 +201,16 @@ class CategorySubscriptionsTemplate {
               $category_list[$cat->name]['cat'] = array();
 							array_push($unique_category_list, $cat->name);
             }
-            if(! isset($post_content[$post->ID])){
+            if(! isset($unique_post_list[$post->ID])){
               // Should be a post that we've not rendered yet.
               array_push($category_list[$cat->name]['posts'],$post->ID);
               $category_list[$cat->name]['cat'] = $cat;
+              $unique_post_list[$post->ID] = true;
             }
           }
           // $category_list should be a HoA containing unique posts and the first category they appeared in, indexed on the category name.
 
-          $message_content = $this->fill_individual_message($user_ID, $post->ID, true);
+          $message_content = $this->fill_individual_message($user, $post->ID, true);
           $message_list .= $message_content['content'];
 					$post_content[$post->ID] = $message_content['content'];
           $toc .= $message_content['toc'];
@@ -237,14 +237,15 @@ class CategorySubscriptionsTemplate {
 
 				usort($unique_category_list,'custom_cat_sort');
 
-				var_export($category_list);
-				error_log(var_export($category_list,true));
+				//var_export($category_list);
+				//error_log(var_export($category_list,true));
 
-				var_export($unique_category_list);
-				error_log(var_export($unique_category_list,true));
+				//var_export($unique_category_list);
+				//error_log(var_export($unique_category_list,true));
 
 				foreach($unique_category_list as $ucat){
-					$grouped_message_list .= $this->fill_category_header($user_ID,$ucat);
+          $full_cat = $category_list[$ucat]['cat'];
+					$grouped_message_list .= $this->fill_category_header($user,$full_cat);
 					foreach($category_list[$ucat]['posts'] as $ucatpost){
 						$grouped_message_list .= $post_content[$ucatpost];
 					}
@@ -261,13 +262,14 @@ class CategorySubscriptionsTemplate {
         $subject = preg_replace($patterns, $variables, (($frequency == 'daily') ? $this->cat_sub->daily_email_subject : $this->cat_sub->weekly_email_subject));
         $content = '';
 
-        if(get_user_meta($user_ID, 'cat_sub_delivery_format_pref',true) == 'html'){
+        if(get_user_meta($user->ID, 'cat_sub_delivery_format_pref',true) == 'html'){
             $content = preg_replace($patterns, $variables, (($frequency == 'daily') ? $this->cat_sub->daily_email_html_template : $this->cat_sub->weekly_email_html_template));
         } else {
             $content = preg_replace($patterns, $variables, (($frequency == 'daily') ? $this->cat_sub->daily_email_text_template : $this->cat_sub->weekly_email_text_template));
         }
 
-				error_log('Category Grouped Email List: '. $grouped_message_list);
+				//error_log('Category Grouped Email List: '. $grouped_message_list);
+        //print_r($grouped_message_list);
 
         $content = preg_replace('/\[EMAIL_LIST\]/', $message_list, $content);
         $content = preg_replace('/\[CATEGORY_GROUPED_EMAIL_LIST\]/', $grouped_message_list, $content);

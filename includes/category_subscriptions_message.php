@@ -1,22 +1,22 @@
 <?php
 class CategorySubscriptionsMessage {
-    var $user_ID = '';
+    var $user = '';
     var $cat_sub = '';
     var $formatted_msg = '';
     
-    public function __construct(&$user_ID,&$cat_sub,&$formatted_msg){
-        $this->user_ID = $user_ID;
+    public function __construct(&$user,&$cat_sub,&$formatted_msg){
+        $this->user = $user;
         $this->cat_sub = $cat_sub;
         $this->formatted_msg = $formatted_msg;
     }
     
     # PHP 4 constructor
-    public function CategorySubscriptionsMessage(&$user_ID,&$cat_sub,&$formatted_msg) {
-        return $this->__construct($user_ID,$cat_sub,$formatted_msg);
+    public function CategorySubscriptionsMessage(&$user,&$cat_sub,&$formatted_msg) {
+        return $this->__construct($user,$cat_sub,$formatted_msg);
     }
 
     public function deliver(){
-        $user = get_userdata($this->user_ID);
+        $user = $this->user;
         $to = $user->user_email;
         $subject = $this->formatted_msg['subject'];
 

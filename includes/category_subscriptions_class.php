@@ -274,9 +274,9 @@ class CategorySubscriptions {
         }
     }
 
-    public function send_digested_messages($frequency = 'daily', $nothing_to_see_here){
+    public function send_digested_messages($frequency = 'daily', $nothing_to_see_here = 0){
         // This function picks up and sends the messages that've been prepared by the "prepare_TIMEPERIOD_messages" functions.
-        $to_send = $this->wpdb->get_results( $this->wpdb->prepare("SELECT * FROM $this->message_queue_table_name WHERE post_ID = %d AND message_type = %s AND to_send = true LIMIT %d", array( $post_ID, $frequency, $this->max_batch )));
+        $to_send = $this->wpdb->get_results( $this->wpdb->prepare("SELECT * FROM $this->message_queue_table_name WHERE message_type = %s AND to_send = true LIMIT %d", array( $frequency, $this->max_batch )));
 
         foreach($to_send as $msg){
             $this->wpdb->update($this->message_queue_table_name, 
@@ -287,7 +287,11 @@ class CategorySubscriptions {
             );
             // Do the update before sending the message just to ensure we don't get stuck messages
             // if the sending errors out.
-            $sender = new CategorySubscriptionsMessage($msg->user_ID,$this,array('subject' => $msg->subject, 'content' => $message->message));
+            $user = get_userdata($msg->user_ID);
+
+            // passing by reference.
+            $message_content = array('subject' => $msg->subject, 'content' => $msg->message);
+            $sender = new CategorySubscriptionsMessage($user,$this,$message_content);
             $sender->deliver();
         }
 
@@ -340,10 +344,11 @@ class CategorySubscriptions {
 
             if(count($query->posts) > 0){
                 // There are messages to send for this user.
-                $digested_message = $tmpl->fill_digested_message($usub->user_ID, $query->posts, $frequency);
+                $user = get_userdata($usub->user_ID);
+                $digested_message = $tmpl->fill_digested_message($user, $query->posts, $frequency);
 
-                $sender = new CategorySubscriptionsMessage($usub->user_ID,$this,$digested_message);
-                $sender->deliver();
+//                $sender = new CategorySubscriptionsMessage($user,$this,$digested_message);
+//                $sender->deliver();
 
                 $this->wpdb->insert($this->message_queue_table_name, 
                     array('user_ID' => $usub->user_ID, 'message_type' => $frequency, 'subject' => $digested_message['subject'], 'message' => $digested_message['content']), 
@@ -385,11 +390,12 @@ class CategorySubscriptions {
         $tmpl = new CategorySubscriptionsTemplate($this);
 
         foreach($to_send as $message){
+            $user = get_userdata($message->user_ID);
             // Get the user object and fill template variables based on the user's preference.
             // We need to fill the template variables dynamically for every string.
-            $message_content = $tmpl->fill_individual_message($message->user_ID, $message->post_ID);
+            $message_content = $tmpl->fill_individual_message($user, $message->post_ID);
 
-            $sender = new CategorySubscriptionsMessage($message->user_ID,$this,$message_content);
+            $sender = new CategorySubscriptionsMessage($user,$this,$message_content);
             $sender->deliver();
 
             // update table to ensure it's not sent again.
@@ -481,7 +487,7 @@ public function update_bulk_edit_changes(){
 		$user_cat_ids = isset($_GET['cscs' . $user_ID]) ? $_GET['cscs' . $user_ID] : array();
 		foreach($user_cat_ids as $cat_ID){
 			$delivery_time_preference = $value_map[$_GET['csdt' . $user_ID . '_' . $cat_ID]];
-			error_log('User Id: ' . $user_ID . ' Category ID: ' . $cat_ID . ' DTP: ' . $delivery_time_preference);
+			//error_log('User Id: ' . $user_ID . ' Category ID: ' . $cat_ID . ' DTP: ' . $delivery_time_preference);
 			$this->wpdb->insert($this->user_subscriptions_table_name, array('category_ID' => $cat_ID, 'user_ID' => $user_ID, 'delivery_time_preference' => stripslashes($delivery_time_preference)), array('%d','%d','%s') );
 		}
 	}
@@ -717,7 +723,7 @@ public function admin_menu (){
                 <dd><?php _e('The list of messages, grouped by category and then sorted by post date. These messages have the "email row" templates applied to them.  The category header will be formatted according to the "category row template" for the appropriate email format (text or html).'); ?></dd>
 
                 <dt>[TOC]</dt>
-                <dd><?php _e('The list of messages used to create the Table of Contents, sorted by post date. These messages have the "email toc" templates applied to them.'); ?></dd>
+                <dd><?php _e('The list of messages in an [EMAIL_LIST]. [TOC] used to create the Table of Contents, sorted by post date. These messages have the "email toc" templates applied to them. The [TOC] will match the messages in the [EMAIL_LIST], but not the [CATEGORY_GROUPED_EMAIL_LIST].'); ?></dd>
     
             </dl>
         </div>
