@@ -26,6 +26,7 @@ $cat_sub = new CategorySubscriptions($wpdb);
 
 // Debugging. . .
 // $cat_sub->prepare_daily_messages();
+// $cat_sub->send_digested_messages('daily',0);
 
 // Cron functions
 add_action( 'my_cat_sub_send_individual_messages', array($cat_sub, 'send_individual_messages_for') );

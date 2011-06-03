@@ -139,8 +139,9 @@ class CategorySubscriptions {
         dbDelta($sql);
 
         update_option("category_subscription_version", $this->category_subscription_version);
-        wp_schedule_event(time(), 'daily', 'my_cat_sub_prepare_daily_messages');
-        wp_schedule_event(time(), 'daily', 'my_cat_sub_prepare_weekly_messages');
+				// Schedule the first daily message check for 2 hours out.
+        wp_schedule_event(time() + 7200, 'daily', 'my_cat_sub_prepare_daily_messages');
+        wp_schedule_event(time() + 7200, 'daily', 'my_cat_sub_prepare_weekly_messages');
 
         // Ensure we're not grabbing all messages from the beginning of time by setting the last_run time to now.
 
