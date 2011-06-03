@@ -296,6 +296,19 @@ class CategorySubscriptions {
         }
     }
 
+		
+		public function cat_sub_filter_where_daily( $where = '' ) {
+			$last_run = get_option('cat_sub_last_daily_message_run');
+			$where .= " AND post_date >= '$last_run'";
+			return $where;
+		}
+
+		public function cat_sub_filter_where_weekly( $where = '' ) {
+			$last_run = get_option('cat_sub_last_weekly_message_run');
+			$where .= " AND post_date >= '$last_run'";
+			return $where;
+		}
+
     public function prepare_digested_messages($frequency = 'daily') {
         // So - Find all daily subscriptions. Uniquify based on the user_id, as it'd be
         // stupid to send out one email per subscription.
@@ -308,21 +321,11 @@ class CategorySubscriptions {
 
         $tmpl = new CategorySubscriptionsTemplate($this);
 
-        function cat_sub_filter_where_daily( $where = '' ) {
-            $last_run = get_option('cat_sub_last_daily_message_run');
-            $where .= " AND post_date >= '$last_run'";
-            return $where;
-        }
-        function cat_sub_filter_where_weekly( $where = '' ) {
-            $last_run = get_option('cat_sub_last_weekly_message_run');
-            $where .= " AND post_date >= '$last_run'";
-            return $where;
-        }
 
         if($frequency == 'daily'){
-            add_filter( 'posts_where', 'cat_sub_filter_where_daily' );
+            add_filter( 'posts_where', array($this, 'cat_sub_filter_where_daily') );
         } else {
-            add_filter( 'posts_where', 'cat_sub_filter_where_weekly' );
+            add_filter( 'posts_where', array($this, 'cat_sub_filter_where_weekly') );
         }
 
         foreach($user_subscriptions as $usub){
@@ -340,9 +343,6 @@ class CategorySubscriptions {
                 $user = get_userdata($usub->user_ID);
                 $digested_message = $tmpl->fill_digested_message($user, $query->posts, $frequency);
 
-//                $sender = new CategorySubscriptionsMessage($user,$this,$digested_message);
-//                $sender->deliver();
-
                 $this->wpdb->insert($this->message_queue_table_name, 
                     array('user_ID' => $usub->user_ID, 'message_type' => $frequency, 'subject' => $digested_message['subject'], 'message' => $digested_message['content']), 
                     array('%d','%s','%s','%s')
@@ -353,9 +353,9 @@ class CategorySubscriptions {
         }
 
         if($frequency == 'daily'){
-            remove_filter( 'posts_where', 'cat_sub_filter_where_daily' );
+            remove_filter( 'posts_where', array($this, 'cat_sub_filter_where_daily') );
         } else {
-            remove_filter( 'posts_where', 'cat_sub_filter_where_weekly' );
+            remove_filter( 'posts_where', array($this, 'cat_sub_filter_where_weekly') );
         }
 
         $this_run_time = date('Y-m-d H:i:s');

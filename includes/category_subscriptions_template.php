@@ -179,7 +179,7 @@ class CategorySubscriptionsTemplate {
         return array('subject' => $subject, 'content' => $content, 'toc' => $toc_entry);
     }
 
-		function cat_sub_custom_cat_sort($a,$b){
+		public function cat_sub_custom_cat_sort($a,$b){
 			$a_numeric_start = preg_match('/^\d/',$a);
 			$b_numeric_start = preg_match('/^\d/',$b);
 
@@ -242,10 +242,10 @@ class CategorySubscriptionsTemplate {
 				usort($unique_category_list,array($this,'cat_sub_custom_cat_sort'));
 
 				//var_export($category_list);
-				//error_log(var_export($category_list,true));
+//				error_log('Category List: ' . print_r($category_list,true));
 
 				//var_export($unique_category_list);
-				//error_log(var_export($unique_category_list,true));
+//				error_log('Unique category list:' . print_r($unique_category_list,true));
 
 				foreach($unique_category_list as $ucat){
           $full_cat = $category_list[$ucat]['cat'];
