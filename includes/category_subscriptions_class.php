@@ -1,7 +1,7 @@
 <?php
 class CategorySubscriptions {
     var $user_subscriptions_table_name = '';
-    var $category_subscription_version = '0.1';
+    var $category_subscription_version = '0.2';
     var $message_queue_table_name = '';
     var $wpdb = '';
 
@@ -80,8 +80,8 @@ class CategorySubscriptions {
 
         if(get_option('category_subscription_version') != $this->category_subscription_version){
             // Re-init the plugin to apply database changes. Hizz-ott.
-
-            $this->category_subscriptions_install();
+            $this->init_db_structure();
+            update_option("category_subscription_version", $this->category_subscription_version);
         }
 
         $this->initialize_templates();
@@ -103,7 +103,7 @@ class CategorySubscriptions {
       return $this->from_name;
     }
 
-    public function category_subscriptions_install(){
+    public function init_db_structure(){
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
 
         $sql = "CREATE TABLE " . $this->user_subscriptions_table_name . ' (
@@ -122,6 +122,7 @@ class CategorySubscriptions {
         $sql = "CREATE TABLE " . $this->message_queue_table_name . " (
             id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
             message_type ENUM('individual','daily','weekly') not null default 'individual',
+            digest_message_for date NOT NULL DEFAULT '0000-00-00',
             user_ID bigint(20) UNSIGNED,
             post_ID bigint(20) UNSIGNED,
             subject varchar(250),
@@ -133,10 +134,14 @@ class CategorySubscriptions {
             KEY user_ID (user_ID),
             KEY post_ID (post_ID),
             KEY to_send (to_send),
+            KEY digest_message_for (digest_message_for),
             KEY delivered_at (delivered_at)
         ) DEFAULT CHARSET=utf8";
-    
         dbDelta($sql);
+    }
+
+    public function category_subscriptions_install(){
+        $this->init_db_structure();
 
         update_option("category_subscription_version", $this->category_subscription_version);
 				// Schedule the first daily message check for 2 hours out.
@@ -149,7 +154,6 @@ class CategorySubscriptions {
         update_option('cat_sub_last_daily_message_run', $install_time);
         update_option('cat_sub_last_weekly_message_run', $install_time);
         update_option('cat_sub_install_unixtime', time());
-
     }
 
     public function category_subscriptions_deactivate(){
@@ -188,7 +192,7 @@ class CategorySubscriptions {
         // Get the categories for this post, find the users, and then add the rows to the message queue table.
 
         $install_time = get_option('cat_sub_install_unixtime');
-        if(strtotime($post->post_date) <= $install_time){
+        if(strtotime($post->post_date_gmt) <= $install_time){
             # Don't do anything with posts that existed before this plugin was installed.
             return;
         }
@@ -272,11 +276,13 @@ class CategorySubscriptions {
         // This function picks up and sends the messages that've been prepared by the "prepare_TIMEPERIOD_messages" functions.
         $to_send = $this->wpdb->get_results( $this->wpdb->prepare("SELECT * FROM $this->message_queue_table_name WHERE message_type = %s AND to_send = true LIMIT %d", array( $frequency, $this->max_batch )));
 
+        $delivered_at = date('Y-m-d H:i:s');
+
         foreach($to_send as $msg){
             $this->wpdb->update($this->message_queue_table_name, 
-                array('to_send' => 0, 'message_sent' => 1),
+                array('to_send' => 0, 'message_sent' => 1, 'delivered_at' => $delivered_at),
                 array('id' => $msg->id),
-                array('%d','%d'),
+                array('%d','%d', '%s'),
                 array('%d')
             );
             // Do the update before sending the message just to ensure we don't get stuck messages
@@ -297,16 +303,15 @@ class CategorySubscriptions {
         }
     }
 
-		
 		public function cat_sub_filter_where_daily( $where = '' ) {
 			$last_run = get_option('cat_sub_last_daily_message_run');
-			$where .= " AND post_date >= '$last_run'";
+			$where .= " AND post_date_gmt >= '$last_run'";
 			return $where;
 		}
 
 		public function cat_sub_filter_where_weekly( $where = '' ) {
 			$last_run = get_option('cat_sub_last_weekly_message_run');
-			$where .= " AND post_date >= '$last_run'";
+			$where .= " AND post_date_gmt >= '$last_run'";
 			return $where;
 		}
 
@@ -328,29 +333,42 @@ class CategorySubscriptions {
             add_filter( 'posts_where', array($this, 'cat_sub_filter_where_weekly') );
         }
 
+        // $digest_message_for is a stopgap to try and ensure we don't send duplicates.
+        // This could be tricked if the last_run option doesn't get updated because of a fatal error (maybe a memory limit)
+        // and this run happens over a date change.
+
+        $digest_message_for = date('Y-m-d');
+
+        $already_getting = $this->wpdb->get_results($this->wpdb->prepare("select user_ID from $this->message_queue_table_name where message_type = %s and digest_message_for = %s",array($frequency,$digest_message_for)), OBJECT_K);
+
+        // error_log('Already getting: ' . print_r($already_getting,true));
+        // error_log('User Subscriptions: ' . print_r($user_subscriptions,true));
+
         foreach($user_subscriptions as $usub){
+          if(! isset($already_getting[$usub->user_ID])){
             // So get published messages greater than $last_run in these categories that have a post_status of "publish".
             $query = new WP_Query(
                 array(
-                    'cat' => $usub->category_IDs,
-                    'post_type' => 'post',
-                    'post_status' => 'publish',
-                    'posts_per_page' => -1
-                )
-            );
+                  'cat' => $usub->category_IDs,
+                  'post_type' => 'post',
+                  'post_status' => 'publish',
+                  'posts_per_page' => -1
+                  )
+                );
 
             if(count($query->posts) > 0){
-                // There are messages to send for this user.
-                $user = get_userdata($usub->user_ID);
-                $digested_message = $tmpl->fill_digested_message($user, $query->posts, $frequency);
+              // There are messages to send for this user.
+              $user = get_userdata($usub->user_ID);
+              $digested_message = $tmpl->fill_digested_message($user, $query->posts, $frequency);
 
-                $this->wpdb->insert($this->message_queue_table_name, 
-                    array('user_ID' => $usub->user_ID, 'message_type' => $frequency, 'subject' => $digested_message['subject'], 'message' => $digested_message['content']), 
-                    array('%d','%s','%s','%s')
-                );
-                wp_schedule_single_event(time() + 60, 'my_cat_sub_send_digested_messages', array($frequency,rand()));
+              $this->wpdb->insert($this->message_queue_table_name, 
+                  array('user_ID' => $usub->user_ID, 'message_type' => $frequency, 'subject' => $digested_message['subject'], 'message' => $digested_message['content'], 'digest_message_for' => $digest_message_for), 
+                  array('%d','%s','%s','%s', '%s')
+                  );
+              wp_schedule_single_event(time() + 60, 'my_cat_sub_send_digested_messages', array($frequency,rand()));
             }
             wp_reset_postdata();
+          }
         }
 
         if($frequency == 'daily'){
@@ -361,9 +379,7 @@ class CategorySubscriptions {
 
         $this_run_time = date('Y-m-d H:i:s');
         update_option('cat_sub_last_' . $frequency . '_message_run', $this_run_time);
-
     }
-
 
     /*
      * Get the individual messages to send up to the max_batch size. Template them and deliver, rescheduling if there are still more
@@ -393,11 +409,12 @@ class CategorySubscriptions {
             $sender = new CategorySubscriptionsMessage($user,$this,$message_content);
             $sender->deliver();
 
+            $delivered_at = date('Y-m-d H:i:s');
             // update table to ensure it's not sent again.
             $this->wpdb->update($this->message_queue_table_name, 
-                array('subject' => $message_content['subject'], 'message' => $message_content['content'], 'to_send' => 0, 'message_sent' => 1),
+                array('subject' => $message_content['subject'], 'message' => $message_content['content'], 'to_send' => 0, 'message_sent' => 1, 'delivered_at' => $delivered_at),
                 array('id' => $message->id),
-                array('%s','%s','%d','%d'),
+                array('%s','%s','%d','%d', '%s'),
                 array('%d')
             );
         }
