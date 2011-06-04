@@ -295,7 +295,7 @@ class CategorySubscriptions {
             $sender->deliver();
         }
 
-        $message_count = $this->wpdb->get_var($this->wpdb->prepare("SELECT count(*) from $this->message_queue_table_name WHERE post_ID = %d AND message_type = %s AND to_send = true", array($post_ID, $frequency)));
+        $message_count = $this->wpdb->get_var($this->wpdb->prepare("SELECT count(*) from $this->message_queue_table_name WHERE message_type = %s AND to_send = true", array($frequency)));
 
         if($message_count > 0){
             // more messages to send. Reschedule.
