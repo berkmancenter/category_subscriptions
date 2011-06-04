@@ -322,7 +322,6 @@ class CategorySubscriptions {
 
         $tmpl = new CategorySubscriptionsTemplate($this);
 
-
         if($frequency == 'daily'){
             add_filter( 'posts_where', array($this, 'cat_sub_filter_where_daily') );
         } else {
@@ -335,7 +334,8 @@ class CategorySubscriptions {
                 array(
                     'cat' => $usub->category_IDs,
                     'post_type' => 'post',
-                    'post_status' => 'publish'
+                    'post_status' => 'publish',
+                    'posts_per_page' => -1
                 )
             );
 
@@ -387,7 +387,8 @@ class CategorySubscriptions {
             $user = get_userdata($message->user_ID);
             // Get the user object and fill template variables based on the user's preference.
             // We need to fill the template variables dynamically for every string.
-            $message_content = $tmpl->fill_individual_message($user, $message->post_ID);
+
+            $message_content = $tmpl->fill_individual_message($user, $post);
 
             $sender = new CategorySubscriptionsMessage($user,$this,$message_content);
             $sender->deliver();
@@ -409,7 +410,8 @@ class CategorySubscriptions {
     }
 
     public function trash_messages($post_ID){
-        // Remove messages for this post unless they have already been sent.
+      // Remove messages for this post unless they have already been sent.
+      $this->wpdb->query( $this->wpdb->prepare( "DELETE FROM $this->message_queue_table_name WHERE message_sent is false and post_ID = %d", array($post_ID) ) );
 
     }
 

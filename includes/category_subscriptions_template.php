@@ -142,8 +142,8 @@ class CategorySubscriptionsTemplate {
 			
 		}
 
-    public function fill_individual_message(&$user,&$post_ID,$in_digest = false){
-        $post = get_post($post_ID);
+    public function fill_individual_message(&$user,&$post,$in_digest = false){
+//        $post = get_post($post_ID);
         $this->create_user_replacements($user);
         $this->create_post_replacements($post);
 
@@ -231,8 +231,7 @@ class CategorySubscriptionsTemplate {
             }
           }
           // $category_list should be a HoA containing unique posts and the first category they appeared in, indexed on the category name.
-
-          $message_content = $this->fill_individual_message($user, $post->ID, true);
+          $message_content = $this->fill_individual_message($user, $post, true);
           $message_list .= $message_content['content'];
 					$post_content[$post->ID] = $message_content['content'];
           $toc .= $message_content['toc'];
