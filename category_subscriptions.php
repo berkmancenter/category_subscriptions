@@ -2,14 +2,14 @@
 /**
  * @package Category Subscriptions
  * @author Dan Collis-Puro
- * @version 0.1
+ * @version 0.2
 */
 /*
 Plugin Name: Category Subscriptions
 Plugin URI: http://www.collispuro.com
 Description: This plugin allows your registered users to subscribe to categories and receive updates.
 Author: Dan Collis-Puro
-Version: 0.1
+Version: 0.2
 Author URI: http://collispuro.com
 */
 
@@ -58,9 +58,6 @@ if(current_user_can('remove_users')){
 add_action( 'profile_personal_options', array( $cat_sub, 'show_profile_fields' ) );
 add_action( 'personal_options_update', array( $cat_sub, 'update_profile_fields' ) );
 
-// TODO:
-// Add hook to clear out subscriptions after a user is deactivated / deleted / spammed, etc.
-
 // Instantiate messages on post publish
 add_action( 'save_post', array( $cat_sub, 'instantiate_messages' ) );
 
@@ -75,6 +72,8 @@ add_action( 'admin_menu', array( $cat_sub, 'admin_menu' ) );
 
 add_action('delete_user', array( $cat_sub, 'clean_up_removed_user'));
 add_action('wpmu_delete_user', array( $cat_sub, 'clean_up_removed_user'));
+
+// I cannot confirm that this action ever runs from the site edit page. 
 add_action('make_spam_user', array( $cat_sub, 'clean_up_removed_user'));
 
 // Probably need to check for multisite here to instantiate this hook if needed.

@@ -221,8 +221,6 @@ class CategorySubscriptions {
             }
             $next_scheduled = wp_next_scheduled('my_cat_sub_send_individual_messages',array($post->ID));
 
-            //error_log('Next scheduled value for:' . print_r($next_scheduled,true));
-
             if( $next_scheduled == 0 ){
                 // Not currently scheduled.
                 wp_schedule_single_event(time() + $this->send_delay, 'my_cat_sub_send_individual_messages', array($post->ID));
@@ -406,17 +404,18 @@ class CategorySubscriptions {
 
             $message_content = $tmpl->fill_individual_message($user, $post);
 
-            $sender = new CategorySubscriptionsMessage($user,$this,$message_content);
-            $sender->deliver();
-
             $delivered_at = date('Y-m-d H:i:s');
-            // update table to ensure it's not sent again.
+            // update table to ensure it's not sent again. Do this before sending - so yeah, we only make one attempt.
+            // Ideally, email is smarthosted and retries and whatnot happen properly
             $this->wpdb->update($this->message_queue_table_name, 
                 array('subject' => $message_content['subject'], 'message' => $message_content['content'], 'to_send' => 0, 'message_sent' => 1, 'delivered_at' => $delivered_at),
                 array('id' => $message->id),
                 array('%s','%s','%d','%d', '%s'),
                 array('%d')
             );
+            $sender = new CategorySubscriptionsMessage($user,$this,$message_content);
+            $sender->deliver();
+
         }
 
         $message_count = $this->wpdb->get_var($this->wpdb->prepare("SELECT count(*) from $this->message_queue_table_name WHERE post_ID = %d AND message_type = 'individual' AND to_send = true", array($post_ID)));
