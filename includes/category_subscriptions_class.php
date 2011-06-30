@@ -543,11 +543,21 @@ public function update_bulk_edit_changes(){
      		$child_id = $child_cat->cat_ID;
      		if (array_key_exists($child_id, $cats_by_parent)){
         	$child_cat->children = array();
-					$child_cat->depth = $depth;
         	$this->collect_cats($child_cat->children, $cats_by_parent[$child_id], $cats_by_parent);
      		}
      		$cats[$child_id] = $child_cat;
    		}
+		}
+
+		private function cats_by_parent(&$cats_by_parent,&$categories){
+			foreach ($categories as $cat){
+				$parent_id = $cat->category_parent;
+				$cat->depth = $cat->parent['depth'] + 1;
+				if (!array_key_exists($parent_id, $cats_by_parent)){
+					$cats_by_parent[$parent_id] = array();
+				}
+				$cats_by_parent[$parent_id][] = $cat;
+			}
 		}
 
     private function category_list($user) {
@@ -555,28 +565,19 @@ public function update_bulk_edit_changes(){
     $categories = get_categories(array('hierarchical' => 1, 'hide_empty' => 0, 'orderby' => 'parent'));
 
 		$cats_by_parent = array();
+		$this->cats_by_parent($cats_by_parent, $categories);
 
-		foreach ($categories as $cat){
-			$parent_id = $cat->category_parent;
-  		if (!array_key_exists($parent_id, $cats_by_parent)){
-    		$cats_by_parent[$parent_id] = array();
-  		}
-  		$cats_by_parent[$parent_id][] = $cat;
-		}
 		$cat_tree = array();
 		$this->collect_cats($cat_tree, $cats_by_parent[0], $cats_by_parent);
-//		print_r($cat_tree);
 
-//    $categories = get_categories('hide_empty=0&orderby=name');
     $sql = $this->wpdb->prepare("SELECT category_ID, delivery_time_preference from $this->user_subscriptions_table_name where user_ID = %d", array($user->ID));
     $subscriptions = $this->wpdb->get_results($sql, OBJECT_K);
 
 ?>
-        <table class="wp-list-table widefat fixed" style="width: 50%; margin-top: 1em;">
+        <table class="wp-list-table widefat fixed" style="margin-top: 1em; width: 500px;">
           <thead>
             <tr>
             <th><?php _e('Category'); ?></th>
-            <th><?php _e('Frequency'); ?></th>
             </tr>
           </thead><tbody>
 <?php 
@@ -590,15 +591,15 @@ public function user_profile_cat_row(&$cat,&$subscriptions){
     $subscription_pref = isset($subscriptions[$cat->cat_ID]) ? $subscriptions[$cat->cat_ID] : NULL;
 ?>    <tr>
         <td>
+
             <input type="checkbox" name="category_subscription_categories[]" value="<?php echo esc_attr($cat->cat_ID); ?>" id="category_subscription_category_<?php echo $cat->cat_ID; ?>" <?php echo (( $subscription_pref ) ? 'checked="checked"' : '') ?> >
             <label for="category_subscription_category_<?php echo $cat->cat_ID; ?>"><?php echo htmlspecialchars($cat->cat_name); ?></label>
-        </td>
-        <td>
-            <select name="delivery_time_preference_<?php echo $cat->cat_ID; ?>">
+            <select name="delivery_time_preference_<?php echo $cat->cat_ID; ?>" style="float: right;">
                 <option value="individual"<?php echo (($subscription_pref && $subscription_pref->delivery_time_preference == 'individual') ? ' selected="selected" ' : ''); ?>><?php _e('Immediately'); ?></option>
                 <option value="daily"<?php echo (($subscription_pref && $subscription_pref->delivery_time_preference == 'daily') ? ' selected="selected" ' : ''); ?>><?php _e('Daily'); ?></option>
                 <option value="weekly"<?php echo (($subscription_pref && $subscription_pref->delivery_time_preference == 'weekly') ? ' selected="selected" ' : ''); ?>><?php _e('Weekly'); ?></option>
             </select>
+
         </td>
     </tr>
 <?php
