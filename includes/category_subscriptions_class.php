@@ -538,10 +538,36 @@ public function update_bulk_edit_changes(){
 			return $output;
     }
 
+		private function collect_cats(&$cats, &$children, &$cats_by_parent){
+   		foreach ($children as $child_cat){
+     		$child_id = $child_cat->cat_ID;
+     		if (array_key_exists($child_id, $cats_by_parent)){
+        	$child_cat->children = array();
+					$child_cat->depth = $depth;
+        	$this->collect_cats($child_cat->children, $cats_by_parent[$child_id], $cats_by_parent);
+     		}
+     		$cats[$child_id] = $child_cat;
+   		}
+		}
+
     private function category_list($user) {
     //TODO
-//    $categories = get_categories(array('hierarchical' => 1, 'hide_empty' => 0, 'parent' => 0));
-    $categories = get_categories('hide_empty=0&orderby=name');
+    $categories = get_categories(array('hierarchical' => 1, 'hide_empty' => 0, 'orderby' => 'parent'));
+
+		$cats_by_parent = array();
+
+		foreach ($categories as $cat){
+			$parent_id = $cat->category_parent;
+  		if (!array_key_exists($parent_id, $cats_by_parent)){
+    		$cats_by_parent[$parent_id] = array();
+  		}
+  		$cats_by_parent[$parent_id][] = $cat;
+		}
+		$cat_tree = array();
+		$this->collect_cats($cat_tree, $cats_by_parent[0], $cats_by_parent);
+//		print_r($cat_tree);
+
+//    $categories = get_categories('hide_empty=0&orderby=name');
     $sql = $this->wpdb->prepare("SELECT category_ID, delivery_time_preference from $this->user_subscriptions_table_name where user_ID = %d", array($user->ID));
     $subscriptions = $this->wpdb->get_results($sql, OBJECT_K);
 
@@ -553,14 +579,16 @@ public function update_bulk_edit_changes(){
             <th><?php _e('Frequency'); ?></th>
             </tr>
           </thead><tbody>
-<?php foreach ($categories as $cat){ 
-    $subscription_pref = isset($subscriptions[$cat->cat_ID]) ? $subscriptions[$cat->cat_ID] : NULL;
-/*    if($subscription_pref) {
-        error_log('Sub pref: ' . print_r($subscription_pref,true));
+<?php 
+		foreach ($cat_tree as $cat){ 
+			$this->user_profile_cat_row($cat,$subscriptions);
+    }
+    echo '</tbody></table>';
 }
- */
-?>
-    <tr>
+
+public function user_profile_cat_row(&$cat,&$subscriptions){
+    $subscription_pref = isset($subscriptions[$cat->cat_ID]) ? $subscriptions[$cat->cat_ID] : NULL;
+?>    <tr>
         <td>
             <input type="checkbox" name="category_subscription_categories[]" value="<?php echo esc_attr($cat->cat_ID); ?>" id="category_subscription_category_<?php echo $cat->cat_ID; ?>" <?php echo (( $subscription_pref ) ? 'checked="checked"' : '') ?> >
             <label for="category_subscription_category_<?php echo $cat->cat_ID; ?>"><?php echo htmlspecialchars($cat->cat_name); ?></label>
@@ -574,8 +602,6 @@ public function update_bulk_edit_changes(){
         </td>
     </tr>
 <?php
-    }
-    echo '</tbody></table>';
 }
 
 public function clean_up_removed_user($user_ID, $blog_id = 0){
