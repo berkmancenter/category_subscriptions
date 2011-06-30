@@ -245,6 +245,13 @@ class CategorySubscriptions {
     
         $post = get_post($post_ID);
 
+        $install_time = get_option('cat_sub_install_unixtime');
+        if(strtotime($post->post_date_gmt) <= $install_time){
+            # Don't do anything with posts that existed before this plugin was installed.
+            # This should fix the "recategorize post, get messages sent again" issue. Perhaps.
+            return;
+        }
+
         $sent_messages = $this->wpdb->get_var($this->wpdb->prepare("select count(*) from $this->message_queue_table_name where post_ID = %d and message_sent is true and message_type = 'individual'", array($post_ID)));
 
         if( $post->post_status == 'publish' && $sent_messages <= 0){
@@ -533,6 +540,7 @@ public function update_bulk_edit_changes(){
 
     private function category_list($user) {
     //TODO
+//    $categories = get_categories(array('hierarchical' => 1, 'hide_empty' => 0, 'parent' => 0));
     $categories = get_categories('hide_empty=0&orderby=name');
     $sql = $this->wpdb->prepare("SELECT category_ID, delivery_time_preference from $this->user_subscriptions_table_name where user_ID = %d", array($user->ID));
     $subscriptions = $this->wpdb->get_results($sql, OBJECT_K);
