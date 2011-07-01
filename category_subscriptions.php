@@ -2,14 +2,14 @@
 /**
  * @package Category Subscriptions
  * @author Dan Collis-Puro
- * @version 1.0
-*/
+ * @version 1.1
+ */
 /*
 Plugin Name: Category Subscriptions
 Plugin URI: http://www.collispuro.com
 Description: This plugin allows your registered users to subscribe to categories and receive updates.
 Author: Dan Collis-Puro
-Version: 1.0
+Version: 1.1
 Author URI: http://collispuro.com
 */
 
@@ -41,11 +41,11 @@ register_deactivation_hook(__FILE__,array( $cat_sub,'category_subscriptions_deac
 
 // Bulk editing
 if(current_user_can('remove_users')){
-  add_filter('manage_users_columns', array($cat_sub, 'add_cat_sub_custom_column'));
-  add_filter('manage_users_custom_column', array($cat_sub, 'manage_users_custom_column'), 10, 3);
-  add_action('admin_head', array($cat_sub, 'update_bulk_edit_changes'));
-// Doesn't work. You can only remove actions from the bulk edit menu. :-(
-//	add_filter('bulk_actions-users', array($cat_sub,'custom_bulk_action'));
+	add_filter('manage_users_columns', array($cat_sub, 'add_cat_sub_custom_column'));
+	add_filter('manage_users_custom_column', array($cat_sub, 'manage_users_custom_column'), 10, 3);
+	add_action('admin_head', array($cat_sub, 'update_bulk_edit_changes'));
+	// Doesn't work. You can only remove actions from the bulk edit menu. :-(
+	//	add_filter('bulk_actions-users', array($cat_sub,'custom_bulk_action'));
 }
 
 // edit user profile page
