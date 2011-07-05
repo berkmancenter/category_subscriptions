@@ -5,7 +5,7 @@ Donate link:
 Tags: email, notification, notify, category, subscription, subscriptions
 Requires at least: 3.0.3
 Tested up to: 3.1.3
-Stable tag: 1.0
+Stable tag: 1.1
 
 Allow registered users to subscribe to categories giving them control over delivery times (e.g. daily or weekly digests) and format (html or text).
 
