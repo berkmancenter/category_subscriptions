@@ -612,7 +612,7 @@ class CategorySubscriptions {
 		$subscriptions = $this->wpdb->get_results($sql, OBJECT_K);
 
 ?>
-				<table class="wp-list-table widefat fixed" style="margin-top: 1em; width: 500px;">
+				<table class="wp-list-table widefat fixed cat_sub_user_cat_list" style="margin-top: 1em; width: 500px;">
 					<thead>
 						<tr>
 						<th><?php _e('Category'); ?></th>
@@ -631,7 +631,7 @@ class CategorySubscriptions {
 		$subscription_pref = isset($subscriptions[$cat->cat_ID]) ? $subscriptions[$cat->cat_ID] : NULL;
 ?>
 
-						<?php echo ($cat->depth > 1) ? str_repeat('&#8212;&nbsp;',$cat->depth - 1) : '' ?><input type="checkbox" name="category_subscription_categories[]" value="<?php echo esc_attr($cat->cat_ID); ?>" id="category_subscription_category_<?php echo $cat->cat_ID; ?>" <?php echo (( $subscription_pref ) ? 'checked="checked"' : '') ?> >
+            <?php echo ($cat->depth > 1) ? str_repeat('&#8212;&nbsp;',$cat->depth - 1) : '' ?><input type="checkbox" class="depth-<?php echo $cat->depth; ?>" name="category_subscription_categories[]" value="<?php echo esc_attr($cat->cat_ID); ?>" id="category_subscription_category_<?php echo $cat->cat_ID; ?>" <?php echo (( $subscription_pref ) ? 'checked="checked"' : '') ?> >
 						<label for="category_subscription_category_<?php echo $cat->cat_ID; ?>"><?php echo htmlspecialchars($cat->cat_name); ?></label>
 						<select name="delivery_time_preference_<?php echo $cat->cat_ID; ?>" style="float: right;">
 								<option value="individual"<?php echo (($subscription_pref && $subscription_pref->delivery_time_preference == 'individual') ? ' selected="selected" ' : ''); ?>><?php _e('Immediately'); ?></option>
