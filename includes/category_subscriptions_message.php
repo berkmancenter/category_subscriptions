@@ -46,10 +46,10 @@ class CategorySubscriptionsMessage {
 
         $headers_for_email = implode("\n",$headers) . "\n";
 
-        error_log('attempting to send message. . . ');
-        error_log('To: ' . $to);
-        error_log('Subject: ' . $subject);
-        error_log('Content: ' . $content);
+        //error_log('attempting to send message. . . ');
+        //error_log('To: ' . $to);
+        //error_log('Subject: ' . $subject);
+        //error_log('Content: ' . $content);
 
         wp_mail($to, $subject, $content, $headers_for_email);
     }

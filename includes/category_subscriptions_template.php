@@ -67,8 +67,8 @@ class CategorySubscriptionsTemplate {
 
       if($cat->parent != 0){
         $parent_cat = get_category($cat->parent);
-        error_log('Parent cat stuff: ' . print_r($cat->parent,true));
-        error_log('Parent cat data: ' . print_r($parent_cat,true));
+//        error_log('Parent cat stuff: ' . print_r($cat->parent,true));
+//        error_log('Parent cat data: ' . print_r($parent_cat,true));
         array_push($parent_cat_names, $parent_cat->name);
         array_push($parent_cat_urls, '<a href="' . get_bloginfo('url') .'/?cat=' . $parent_cat->term_id . '">' . $parent_cat->name . '</a>');
       }
