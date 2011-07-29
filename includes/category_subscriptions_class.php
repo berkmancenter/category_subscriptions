@@ -1,7 +1,7 @@
 <?php
 class CategorySubscriptions {
 	var $user_subscriptions_table_name = '';
-	var $category_subscription_version = '1.1';
+	var $category_subscription_version = '1.2';
 	var $message_queue_table_name = '';
 	var $wpdb = '';
 	var $bulk_category_cache = NULL;

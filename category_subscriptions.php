@@ -2,14 +2,14 @@
 /**
  * @package Category Subscriptions
  * @author Dan Collis-Puro
- * @version 1.1
+ * @version 1.2
  */
 /*
 Plugin Name: Category Subscriptions
 Plugin URI: http://www.collispuro.com
 Description: This plugin allows your registered users to subscribe to categories and receive updates.
 Author: Dan Collis-Puro
-Version: 1.1
+Version: 1.2
 Author URI: http://collispuro.com
 */
 
