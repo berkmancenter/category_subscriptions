@@ -150,11 +150,21 @@ class CategorySubscriptionsTemplate {
 		}
 		$patterns = array();
 
-		$patterns_tmp = array_merge(array('CATEGORY_URL','CATEGORY_NAME'),$this->global_callback_variables, $this->user_template_variables);
+		$patterns_tmp = array_merge(array('CATEGORY_URL','CATEGORY_NAME','PARENT_CATEGORY_URL','PARENT_CATEGORY_NAME'),$this->global_callback_variables, $this->user_template_variables);
 		foreach($patterns_tmp as $pat){
 			array_push($patterns, '/\[' . $pat . '\]/');
-		}
-		$variables = array_merge(array(get_bloginfo('url') .'/?cat=' . $cat->term_id, $cat->name), $this->global_callback_values, $this->user_template_values);
+    }
+
+    $parent_category_name = '';
+    $parent_category_url = '';
+
+    if($cat->parent != 0){
+      $parent_cat = get_category($cat->parent);
+      $parent_category_name = $parent_cat->name;
+      $parent_category_url = '<a href="' . get_bloginfo('url') .'/?cat=' . $parent_cat->term_id . '">' . $parent_cat->name . '</a>'; 
+    }
+
+    $variables = array_merge(array(get_bloginfo('url') .'/?cat=' . $cat->term_id, $cat->name, $parent_category_url,$parent_category_name), $this->global_callback_values, $this->user_template_values);
 
 		$header_content = '';
 
