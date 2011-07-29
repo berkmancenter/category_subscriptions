@@ -640,7 +640,7 @@ class CategorySubscriptions {
 						</select><div style="clear:both;"></div>
 
 <?php
-		if(count($cat->children) > 0){
+		if(isset($cat->children)){
 			foreach($cat->children as $cat_child){
 				$this->user_profile_cat_row($cat_child,$subscriptions);
 			}

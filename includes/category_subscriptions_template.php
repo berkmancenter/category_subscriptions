@@ -45,25 +45,45 @@ class CategorySubscriptionsTemplate {
 			array_push($this->post_template_values, $post->{strtolower($opt)});
 		}
 
+    // Start pulling together categories and tags.
 		array_push($this->post_template_variables,'CATEGORIES');
 		array_push($this->post_template_variables,'CATEGORIES_WITH_URLS');
+		array_push($this->post_template_variables,'PARENT_CATEGORIES');
+		array_push($this->post_template_variables,'PARENT_CATEGORIES_WITH_URLS');
 		array_push($this->post_template_variables,'TAGS');
 		array_push($this->post_template_variables,'TAGS_WITH_URLS');
 
 		$pcats = wp_get_post_categories( $post->ID, array('fields' => 'all') );
 		$cat_names = array();
 		$cat_urls = array();
+		$parent_cat_names = array();
+		$parent_cat_urls = array();
 
 		foreach($pcats as $cat){
+      // Populate values for categories and categories with URLs.
 			// Nick off the last category separator. Sigh. This is stupid, wordpress core. *shakes tiny fist angrily*
 			$cat_name = get_category_parents($cat->term_id, FALSE, $this->cat_sub->category_separator);
 			$cat_name = substr($cat_name,0,strlen($cat_name) - strlen($this->cat_sub->category_separator));
 
+      if($cat->parent != 0){
+        $parent_cat = get_category($cat->parent);
+        error_log('Parent cat stuff: ' . print_r($cat->parent,true));
+        error_log('Parent cat data: ' . print_r($parent_cat,true));
+        array_push($parent_cat_names, $parent_cat->name);
+        array_push($parent_cat_urls, '<a href="' . get_bloginfo('url') .'/?cat=' . $parent_cat->term_id . '">' . $parent_cat->name . '</a>');
+      }
+
 			array_push($cat_names, $cat_name);
 			array_push($cat_urls, '<a href="' . get_bloginfo('url') .'/?cat=' . $cat->term_id . '">' . $cat_name . '</a>');
 		}
+
+    $unique_parent_cat_names = array_unique($parent_cat_names);
+    $unique_parent_cat_urls = array_unique($parent_cat_urls);
+
 		array_push($this->post_template_values, implode(', ', $cat_names));
 		array_push($this->post_template_values, implode(', ', $cat_urls));
+		array_push($this->post_template_values, implode(', ', $unique_parent_cat_names));
+		array_push($this->post_template_values, implode(', ', $unique_parent_cat_urls));
 
 		$ptags = wp_get_post_tags( $post->ID, array('fields' => 'all') );
 		$tag_names = array();
@@ -75,6 +95,8 @@ class CategorySubscriptionsTemplate {
 		}
 		array_push($this->post_template_values, implode(', ', $tag_names));
 		array_push($this->post_template_values, implode(', ', $tag_urls));
+    
+    // Done with categories and tags.
 
 		$excerpt = $post->post_excerpt;
 		if(strlen($excerpt) == 0){
