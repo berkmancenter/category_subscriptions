@@ -179,6 +179,8 @@ class CategorySubscriptions {
 			$user = get_userdata($user_id);
 			return $this->bulk_category_list($user);
 		} 
+		// allows other plugins to hook into manage_users_custom_column
+		return $empty;
 	} 
 
 	public function update_profile_fields ( $user_ID ){
