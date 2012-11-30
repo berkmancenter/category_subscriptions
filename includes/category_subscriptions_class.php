@@ -176,6 +176,7 @@ class CategorySubscriptions {
 	public function manage_users_custom_column($empty = '', $column_name, $user_id){
 		if( $column_name == 'cat_sub_subscriptions' ) {
 			wp_enqueue_style('admin.css');
+			wp_enqueue_script('admin.js');
 			$user = get_userdata($user_id);
 			return $this->bulk_category_list($user);
 		} 
@@ -547,14 +548,35 @@ class CategorySubscriptions {
 		$subscriptions = $this->wpdb->get_results($sql, OBJECT_K);
 		$output = '<input type="hidden" name="csi[]" value="' . $user->ID . '" />';
 
-		foreach ($categories as $cat){
-			$this->bulk_user_profile_cat_row($cat,$subscriptions,$user,$output);
-		}
+		$output .= "<div class='cat_sub_bulk_edit_wrapper'>";
 
-		$output .= __('Format: ') . "<select name='csdf" . $user->ID . "' id='csdf" . $user->ID . "'>";
-		$output .= "<option value='h' " . ((get_user_meta($user->ID, 'cat_sub_delivery_format_pref',true) == 'html') ? 'selected="selected"' : '') . ">HTML</option>";
-		$output .= "<option value='t' " . ((get_user_meta($user->ID, 'cat_sub_delivery_format_pref',true) == 'text') ? 'selected="selected"' : '') . ">Text</option>";
-		$output .= '</select>';
+			$output .= "<a class='button-secondary cat_sub_bulk_edit_open' href='#'>Edit Subscriptions</a>";
+			$output .= "<div class='cat_sub_bulk_edit_center'>";
+				$output .= "<div class='cat_sub_bulk_edit'>";
+
+					$output .= "<div class='cat_sub_bulk_edit_content'>";
+
+						foreach ($categories as $cat){
+							$this->bulk_user_profile_cat_row($cat,$subscriptions,$user,$output);
+						}
+
+					$output .= "</div>";
+					$output .= "<div class='cat_sub_bulk_edit_footer'>";
+
+						$output .= __('Format: ') . "<select name='csdf" . $user->ID . "' id='csdf" . $user->ID . "'>";
+						$output .= "<option value='h' " . ((get_user_meta($user->ID, 'cat_sub_delivery_format_pref',true) == 'html') ? 'selected="selected"' : '') . ">HTML</option>";
+						$output .= "<option value='t' " . ((get_user_meta($user->ID, 'cat_sub_delivery_format_pref',true) == 'text') ? 'selected="selected"' : '') . ">Text</option>";
+						$output .= '</select>';
+
+						$output .= "<a class='cat_sub_bulk_edit_close' href='#'>[Close]</a>";
+
+					$output .= "</div>";
+
+				$output .= "</div>";
+
+			$output .= "</div>";
+
+		$output .= "</div>";
 
 		return $output;
 	}
