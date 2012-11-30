@@ -812,6 +812,9 @@ class CategorySubscriptions {
 
 								<dt>[FORMATTED_POST_DATE], [FORMATTED_POST_TIME]</dt>
 								<dd><?php _e('The date / time of this post after being formatted by the settings in "Settings -> General."'); ?></dd>
+
+								<dt>[EMAIL_SUBJECT]</dt>
+								<dd><?php _e('The custom field \'email_subject\' as defined when you wrote the post.'); ?></dd>
 						</dl>
 				</div>
 
@@ -827,6 +830,9 @@ class CategorySubscriptions {
 
 								<dt>[TOC]</dt>
 								<dd><?php _e('The list of messages in an [EMAIL_LIST]. [TOC] used to create the Table of Contents, sorted by post date. These messages have the "email toc" templates applied to them. The [TOC] will match the messages in the [EMAIL_LIST], but not the [CATEGORY_GROUPED_EMAIL_LIST].'); ?></dd>
+
+								<dt>[EMAIL_SUBJECTS]</dt>
+								<dd><?php _e('A comma seperated list of the custom field \'email_subject\' (as defined when you wrote the posts).'); ?></dd>
 
 						</dl>
 				</div>
