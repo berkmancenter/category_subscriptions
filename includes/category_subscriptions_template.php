@@ -260,8 +260,8 @@ class CategorySubscriptionsTemplate {
       if (get_post_meta($post->ID, 'email_subject', true) != ""){
         if ($email_subjects != ''){
           $email_subjects .= '; ';
-          $email_subjects .= get_post_meta($post->ID, 'email_subject', true);
         }
+        $email_subjects .= get_post_meta($post->ID, 'email_subject', true);
       }
 
       // So the default TOC is sorted by post date. 
