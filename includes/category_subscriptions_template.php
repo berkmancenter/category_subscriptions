@@ -133,6 +133,10 @@ class CategorySubscriptionsTemplate {
     array_push($this->post_template_variables, 'POST_ID');
     array_push($this->post_template_values, $post->ID);
 
+    // The user defined field
+    array_push($this->post_template_variables, 'EMAIL_SUBJECT');
+    array_push($this->post_template_values, get_post_meta($post->ID, 'email_subject', true));
+
   }
 
   public function create_user_replacements(&$user){
@@ -241,6 +245,7 @@ class CategorySubscriptionsTemplate {
     $grouped_message_list = '';
     $parent_grouped_message_list = '';
     $toc = '';
+    $email_subjects = '';
 
     $category_list = array();
     $parent_category_list = array();
@@ -251,6 +256,14 @@ class CategorySubscriptionsTemplate {
     $post_content = array();
 
     foreach($posts as $post){
+      // create email subjects
+      if (get_post_meta($post->ID, 'email_subject', true) != ""){
+        if ($email_subjects != ''){
+          $email_subjects .= '; ';
+        }
+        $email_subjects .= get_post_meta($post->ID, 'email_subject', true);
+      }
+
       // So the default TOC is sorted by post date. 
       // Get categories here and start the data structure for category grouping.
 
@@ -346,8 +359,8 @@ class CategorySubscriptionsTemplate {
     //print_r($grouped_message_list);
 
     $content = preg_replace(
-      array('/\[EMAIL_LIST\]/','/\[CATEGORY_GROUPED_EMAIL_LIST\]/','/\[PARENT_CATEGORY_GROUPED_EMAIL_LIST\]/','/\[TOC\]/'), 
-      array($message_list, $grouped_message_list, $parent_grouped_message_list, $toc), 
+      array('/\[EMAIL_LIST\]/','/\[CATEGORY_GROUPED_EMAIL_LIST\]/','/\[PARENT_CATEGORY_GROUPED_EMAIL_LIST\]/','/\[TOC\]/', '/\[EMAIL_SUBJECTS\]/'), 
+      array($message_list, $grouped_message_list, $parent_grouped_message_list, $toc, $email_subjects), 
       $content
     );
 
