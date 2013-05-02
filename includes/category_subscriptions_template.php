@@ -345,8 +345,16 @@ class CategorySubscriptionsTemplate {
       array_push($patterns, '/\[' . $pat . '\]/');
     }
     $variables = array_merge($this->global_callback_values, $this->user_template_values);
-
+  
+    // create subject
     $subject = preg_replace($patterns, $variables, (($frequency == 'daily') ? $this->cat_sub->daily_email_subject : $this->cat_sub->weekly_email_subject));
+    $subject = preg_replace(
+      array('/\[EMAIL_SUBJECTS\]/'), 
+      array($email_subjects), 
+      $subject
+    );
+    
+    // create content
     $content = '';
 
     if(get_user_meta($user->ID, 'cat_sub_delivery_format_pref',true) == 'html'){
