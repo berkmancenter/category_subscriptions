@@ -40,7 +40,7 @@
 
 .widefat .column-cat_sub_subscriptions{
   white-space: nowrap;
-  overflow: auto;
+  overflow: visible;
 }
 .cat_sub_bulk_edit_wrapper {
     position: relative;
