@@ -30,3 +30,21 @@ jQuery(document).ready(function(){
   });
 
 });
+
+
+jQuery(document).ready(function (){
+
+  jQuery('.cat_sub_bulk_edit_open').on('click', function (){
+    var jq_bulk_edit = jQuery(this).siblings('.cat_sub_bulk_edit_center').children('.cat_sub_bulk_edit');
+    if (jq_bulk_edit.is(':visible')){
+      jq_bulk_edit.slideUp(100);
+    }
+    else {
+      jq_bulk_edit.slideDown(100);
+    }
+  });
+  jQuery('.cat_sub_bulk_edit_close').on('click', function (){
+    jQuery(this).parents('.cat_sub_bulk_edit').slideUp(100);
+  });
+
+});

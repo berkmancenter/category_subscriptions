@@ -22,7 +22,13 @@ require_once('includes/category_subscriptions_class.php');
 require_once('includes/category_subscriptions_message.php');
 require_once('includes/category_subscriptions_template.php');
 
+require_once("includes/category_subscription_export_html_manager.php");
+require_once("includes/category_subscription_export_db_manager.php");
+
 $cat_sub = new CategorySubscriptions($wpdb);
+
+$cat_sub_export_html = new Category_subscription_export_html_manager();
+$cat_sub_export_db = new Category_subscription_export_db_manager();
 
 // Debugging. . .
 // $cat_sub->prepare_daily_messages();
@@ -78,5 +84,21 @@ add_action('make_spam_user', array( $cat_sub, 'clean_up_removed_user'));
 
 // Probably need to check for multisite here to instantiate this hook if needed.
 add_action('remove_user_from_blog', array( $cat_sub, 'clean_up_removed_user'));
+
+// Export - Create Options Page
+add_action('admin_menu', 'add_category_subscription_menu_hook');
+function add_category_subscription_menu_hook(){
+    global $cat_sub_export_html;
+    add_options_page(
+        __('Export Category Subscriptions Data'),
+        __('Export Category Subscriptions Data'), 
+        'manage_options', 
+        'categories-subscription-export', 
+        array($cat_sub_export_html, 'export_admin_page')
+    );
+}
+
+// Export - Create CSV File
+add_action('init', array($cat_sub_export_html, 'export_CSV'));
 
 ?>
