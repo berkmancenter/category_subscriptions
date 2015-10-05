@@ -343,10 +343,16 @@ class CategorySubscriptions {
 		$tmpl = new CategorySubscriptionsTemplate($this);
 
 		if($frequency == 'daily'){
-			add_filter( 'posts_where', array($this, 'cat_sub_filter_where_daily') );
+      $last_run = get_option('cat_sub_last_daily_message_run');
 		} else {
-			add_filter( 'posts_where', array($this, 'cat_sub_filter_where_weekly') );
+      $last_run = get_option('cat_sub_last_weekly_message_run');
 		}
+
+		$this_run_time = date('Y-m-d H:i:s');
+		$success = update_option('cat_sub_last_' . $frequency . '_message_run', $this_run_time);
+    if (!$success) {
+      error_log('Category Subscriptions: last_run update failed.');
+    }
 
 		// $digest_message_for is a stopgap to try and ensure we don't send duplicates.
 		// This could be tricked if the last_run option doesn't get updated because of a fatal error (maybe a memory limit)
@@ -367,7 +373,12 @@ class CategorySubscriptions {
 						'cat' => $usub->category_IDs,
 						'post_type' => 'post',
 						'post_status' => 'publish',
-						'posts_per_page' => -1
+            'posts_per_page' => -1,
+            'date_query' => array(
+              'after' => $last_run,
+              'inclusive' => true,
+              'column' => 'post_date_gmt'
+            )
 					)
 				);
 
@@ -376,8 +387,8 @@ class CategorySubscriptions {
 					$user = get_userdata($usub->user_ID);
 					$digested_message = $tmpl->fill_digested_message($user, $query->posts, $frequency);
 
-					$this->wpdb->insert($this->message_queue_table_name, 
-						array('user_ID' => $usub->user_ID, 'message_type' => $frequency, 'subject' => $digested_message['subject'], 'message' => $digested_message['content'], 'digest_message_for' => $digest_message_for), 
+					$this->wpdb->insert($this->message_queue_table_name,
+						array('user_ID' => $usub->user_ID, 'message_type' => $frequency, 'subject' => $digested_message['subject'], 'message' => $digested_message['content'], 'digest_message_for' => $digest_message_for),
 						array('%d','%s','%s','%s', '%s')
 					);
 					wp_schedule_single_event(time() + 60, 'my_cat_sub_send_digested_messages', array($frequency,rand()));
@@ -385,15 +396,6 @@ class CategorySubscriptions {
 				wp_reset_postdata();
 			}
 		}
-
-		if($frequency == 'daily'){
-			remove_filter( 'posts_where', array($this, 'cat_sub_filter_where_daily') );
-		} else {
-			remove_filter( 'posts_where', array($this, 'cat_sub_filter_where_weekly') );
-		}
-
-		$this_run_time = date('Y-m-d H:i:s');
-		update_option('cat_sub_last_' . $frequency . '_message_run', $this_run_time);
 	}
 
 	/*
