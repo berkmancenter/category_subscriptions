@@ -387,10 +387,13 @@ class CategorySubscriptions {
 					$user = get_userdata($usub->user_ID);
 					$digested_message = $tmpl->fill_digested_message($user, $query->posts, $frequency);
 
-					$this->wpdb->insert($this->message_queue_table_name,
+					$inserted = $this->wpdb->insert($this->message_queue_table_name,
 						array('user_ID' => $usub->user_ID, 'message_type' => $frequency, 'subject' => $digested_message['subject'], 'message' => $digested_message['content'], 'digest_message_for' => $digest_message_for),
 						array('%d','%s','%s','%s', '%s')
 					);
+          if ($inserted == false) {
+            error_log('Failed inserting message in queue for user ' . $usub->user_ID . ' and subject: "' . $digested_message['subject'] . '"');
+          }
 					wp_schedule_single_event(time() + 60, 'my_cat_sub_send_digested_messages', array($frequency,rand()));
 				}
 				wp_reset_postdata();
